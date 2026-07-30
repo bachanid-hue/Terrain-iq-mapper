@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+.env
+.env.local
+
+# SQLite database and its WAL/SHM files — this is where collections live.
+# Deliberately not committed: it's local runtime data, not source.
+server/data/*.db
+server/data/*.db-journal
+server/data/*.db-wal
+server/data/*.db-shm

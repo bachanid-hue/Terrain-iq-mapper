@@ -1,0 +1,19 @@
+{
+  "name": "terrain-iq-mapper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared data-dictionary collections and AI-assisted field mapping for asset management.",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev": "concurrently -n server,client -c blue,magenta \"npm run dev --workspace server\" \"npm run dev --workspace client\"",
+    "build": "npm run build --workspace client && npm run build --workspace server",
+    "start": "npm run start --workspace server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
