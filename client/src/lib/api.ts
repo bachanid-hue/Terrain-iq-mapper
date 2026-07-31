@@ -1,4 +1,10 @@
-import type { Collection, NewCollectionInput, MappingResult } from '../../../shared/types';
+import type {
+  Collection,
+  NewCollectionInput,
+  MappingResult,
+  SavedMapping,
+  NewSavedMappingInput,
+} from '../../../shared/types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -39,4 +45,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ sourceId, targetId }),
     }),
+  listSavedMappings: () => request<SavedMapping[]>('/mapping/saved'),
+  saveMapping: (input: NewSavedMappingInput) =>
+    request<SavedMapping>('/mapping/saved', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  deleteSavedMapping: (id: string) =>
+    request<void>(`/mapping/saved/${id}`, { method: 'DELETE' }),
 };

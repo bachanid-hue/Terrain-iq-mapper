@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Collection } from '../../../shared/types';
 import ConfirmDialog from './ConfirmDialog';
+import FieldListTable from './FieldListTable';
 
 const TYPE_META: Record<string, { cls: string; short: string }> = {
   'Security Data': { cls: 't-security', short: 'Security' },
@@ -112,18 +113,13 @@ export default function CollectionDetail({
           <p className="page-sub" style={{ marginBottom: 0, marginTop: 8 }}>
             {collection.fields.length} fields read from Row 1 of{' '}
             <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>{collection.fileName}</span>
+            {collection.createdBy && <> &mdash; created by {collection.createdBy}</>}
+            {' '}on {new Date(collection.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
           </p>
         </div>
         <button className="btn btn-danger btn-sm" onClick={() => setConfirming(true)}>Delete collection</button>
       </div>
-      <div className="field-grid">
-        {collection.fields.map((f, i) => (
-          <div className="field-grid-item" key={`${f.name}-${i}`}>
-            <span className="fi-idx">{String(i + 1).padStart(2, '0')}</span>
-            <span className="fi-name">{f.name}</span>
-          </div>
-        ))}
-      </div>
+      <FieldListTable fields={collection.fields} />
 
       {confirming && (
         <ConfirmDialog

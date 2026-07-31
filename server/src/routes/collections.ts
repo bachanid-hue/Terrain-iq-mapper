@@ -35,6 +35,7 @@ collectionsRouter.post('/', (req, res) => {
   const type = body.type;
   const fileName = (body.fileName || '').trim();
   const fields = Array.isArray(body.fields) ? body.fields : [];
+  const createdBy = (body.createdBy || '').trim();
 
   if (!name) return res.status(400).json({ error: 'Collection name is required.' });
   if (!type || !VALID_TYPES.has(type)) {
@@ -42,6 +43,9 @@ collectionsRouter.post('/', (req, res) => {
   }
   if (!fields.length) {
     return res.status(400).json({ error: 'At least one field is required.' });
+  }
+  if (!createdBy) {
+    return res.status(400).json({ error: 'Created By is required.' });
   }
   if (findCollectionByName(name)) {
     return res.status(409).json({ error: `A collection named "${name}" already exists. Choose a different name.` });
@@ -52,6 +56,7 @@ collectionsRouter.post('/', (req, res) => {
     name,
     type,
     fileName: fileName || 'upload.xlsx',
+    createdBy,
     fields: fields.map((f) => ({ name: String(f.name || '').trim() })).filter((f) => f.name),
     createdAt: Date.now(),
   };

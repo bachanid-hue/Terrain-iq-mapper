@@ -1,44 +1,11 @@
-import { useMemo, useState } from 'react';
-import type { Collection, MappingRow } from '../../../shared/types';
+import { useEffect, useMemo, useState } from 'react';
+import type { Collection, MappingRow, SavedMapping } from '../../../shared/types';
 import { fieldScore } from '../../../shared/matching';
 import { api } from '../lib/api';
 import { exportMappingToExcel } from '../lib/exportMapping';
-
-function ConfidenceBadge({ pct }: { pct: number | null }) {
-  if (pct === null) return <span className="badge-none">&mdash;</span>;
-  const tier = pct >= 80 ? 'high' : pct >= 50 ? 'mid' : 'low';
-  const color = tier === 'high' ? 'var(--teal)' : tier === 'mid' ? 'var(--brass-bright)' : 'var(--rose)';
-  const activeRings = tier === 'high' ? 3 : tier === 'mid' ? 2 : 1;
-  const circles = [0, 1, 2].map((i) => {
-    const r = 13 - i * 4;
-    const active = i < activeRings;
-    return (
-      <circle
-        key={i}
-        cx="16"
-        cy="16"
-        r={r}
-        fill="none"
-        stroke={active ? color : '#3a4451'}
-        strokeWidth="1.6"
-        strokeDasharray={active ? '' : '2,2'}
-        opacity={active ? 1 : 0.6}
-      />
-    );
-  });
-  return (
-    <span className="confidence-badge">
-      <svg width="26" height="26" viewBox="0 0 32 32">{circles}</svg>
-      <span className="conf-num" style={{ color }}>{pct}%</span>
-    </span>
-  );
-}
-
-function StatusPill({ status }: { status: MappingRow['status'] }) {
-  if (status === 'auto') return <span className="status-pill auto">Auto-matched</span>;
-  if (status === 'manual') return <span className="status-pill manual">Manual</span>;
-  return <span className="status-pill unmatched">Unmatched</span>;
-}
+import ConfirmDialog from './ConfirmDialog';
+import { ConfidenceBadge, StatusPill } from './MappingBadges';
+import SavedMappingModal from './SavedMappingModal';
 
 function FieldColumn({ collection, roleLabel }: { collection: Collection | undefined; roleLabel: string }) {
   if (!collection) {
@@ -63,7 +30,7 @@ function FieldColumn({ collection, roleLabel }: { collection: Collection | undef
           collection.fields.map((f, i) => (
             <div className="fp-item" key={`${f.name}-${i}`}>
               <span className="fp-idx">{String(i + 1).padStart(2, '0')}</span>
-              <span className="fp-name">{f.name}</span>
+              <span className="fp-name">{f.name.toUpperCase()}</span>
             </div>
           ))
         ) : (
@@ -87,6 +54,15 @@ export default function MappingPage({
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [savedMappings, setSavedMappings] = useState<SavedMapping[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(true);
+  const [savingOpen, setSavingOpen] = useState(false);
+  const [savedByInput, setSavedByInput] = useState('');
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [pendingDeleteSaved, setPendingDeleteSaved] = useState<SavedMapping | null>(null);
+  const [viewingSaved, setViewingSaved] = useState<SavedMapping | null>(null);
+
   const source = collections.find((c) => c.id === sourceId);
   const target = collections.find((c) => c.id === targetId);
   const bothChosen = sourceId !== '' && targetId !== '';
@@ -104,6 +80,37 @@ export default function MappingPage({
     return target.fields.filter((tf) => !rows.some((r) => r.targetField === tf.name)).map((tf) => tf.name);
   }, [rows, target]);
 
+  // Full snapshot used for export and save — includes target fields that
+  // never got matched by any source field, not just the editable source rows.
+  const fullRows = useMemo(() => {
+    if (!rows) return [];
+    const extra: MappingRow[] = unmappedTargets.map((n) => ({
+      sourceField: '',
+      targetField: n,
+      confidence: null,
+      status: 'unmatched',
+      reason: 'No source field scored high enough confidence to suggest a match to this field.',
+    }));
+    return [...rows, ...extra];
+  }, [rows, unmappedTargets]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await api.listSavedMappings();
+        if (!cancelled) setSavedMappings(data);
+      } catch {
+        /* saved-mappings list is supplementary; a failure here shouldn't block the page */
+      } finally {
+        if (!cancelled) setLoadingSaved(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   if (collections.length < 2) {
     return (
       <>
@@ -117,6 +124,7 @@ export default function MappingPage({
 
   async function runMatch() {
     setError(null);
+    setSaveStatus(null);
     if (!bothChosen) {
       setError('Please select both a source and target collection.');
       return;
@@ -144,13 +152,46 @@ export default function MappingPage({
       row.targetField = '';
       row.confidence = null;
       row.status = 'unmatched';
+      row.reason = 'Cleared by you — no target field is currently selected.';
     } else {
       row.targetField = newTargetName;
       row.confidence = Math.round(fieldScore(row.sourceField, newTargetName) * 100);
       row.status = 'manual';
+      row.reason = 'Manually selected by you, overriding the suggested match.';
     }
     next[idx] = row;
     setRows(next);
+  }
+
+  async function handleSaveMapping() {
+    if (!source || !target || !rows) return;
+    const trimmed = savedByInput.trim();
+    if (!trimmed) return;
+    setSaveBusy(true);
+    setSaveStatus(null);
+    try {
+      const saved = await api.saveMapping({
+        sourceId: source.id,
+        targetId: target.id,
+        sourceName: source.name,
+        targetName: target.name,
+        rows: fullRows,
+        savedBy: trimmed,
+      });
+      setSavedMappings((prev) => [saved, ...prev]);
+      setSaveStatus({ type: 'success', message: `Mapping saved by ${trimmed}.` });
+      setSavingOpen(false);
+      setSavedByInput('');
+    } catch (e) {
+      setSaveStatus({ type: 'error', message: e instanceof Error ? e.message : 'Failed to save mapping.' });
+    } finally {
+      setSaveBusy(false);
+    }
+  }
+
+  async function handleDeleteSavedMapping(id: string) {
+    await api.deleteSavedMapping(id);
+    setSavedMappings((prev) => prev.filter((m) => m.id !== id));
   }
 
   return (
@@ -165,7 +206,7 @@ export default function MappingPage({
       <div className="map-selectors">
         <div>
           <label className="field-label">Source Collection</label>
-          <select value={sourceId} onChange={(e) => { setSourceId(e.target.value); setRows(null); setError(null); }}>
+          <select value={sourceId} onChange={(e) => { setSourceId(e.target.value); setRows(null); setError(null); setSaveStatus(null); }}>
             <option value="">&mdash; Select a collection &mdash;</option>
             {collections.map((c) => (
               <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
@@ -179,7 +220,7 @@ export default function MappingPage({
         </div>
         <div>
           <label className="field-label">Target Collection</label>
-          <select value={targetId} onChange={(e) => { setTargetId(e.target.value); setRows(null); setError(null); }}>
+          <select value={targetId} onChange={(e) => { setTargetId(e.target.value); setRows(null); setError(null); setSaveStatus(null); }}>
             <option value="">&mdash; Select a collection &mdash;</option>
             {collections.map((c) => (
               <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
@@ -219,19 +260,47 @@ export default function MappingPage({
           </div>
           <div className="toolbar">
             <p className="page-eyebrow" style={{ margin: 0 }}>{source.name} &rarr; {target.name}</p>
-            <button className="btn btn-ghost btn-sm" onClick={() => exportMappingToExcel(source, target, rows)}>
-              Export Mapping (.xlsx)
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => exportMappingToExcel(source.name, target.name, fullRows)}>
+                Export Mapping (.xlsx)
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={() => { setSavingOpen(true); setSaveStatus(null); }}>
+                Save Mapping
+              </button>
+            </div>
           </div>
+
+          {savingOpen && (
+            <div className="save-mapping-form">
+              <input
+                type="text"
+                placeholder="Your name"
+                value={savedByInput}
+                autoFocus
+                onChange={(e) => setSavedByInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMapping(); if (e.key === 'Escape') setSavingOpen(false); }}
+              />
+              <button className="btn btn-primary btn-sm" disabled={!savedByInput.trim() || saveBusy} onClick={handleSaveMapping}>
+                {saveBusy ? 'Saving…' : 'Confirm Save'}
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setSavingOpen(false); setSavedByInput(''); }}>Cancel</button>
+            </div>
+          )}
+          {saveStatus && (
+            <p className={saveStatus.type === 'error' ? 'error-text' : 'success-text'} style={{ textAlign: 'right' }}>
+              {saveStatus.message}
+            </p>
+          )}
+
           <div className="mapping-table">
             <table>
               <thead>
-                <tr><th>Source Field</th><th>Mapped To</th><th>Confidence</th><th>Status</th></tr>
+                <tr><th>Source Field</th><th>Mapped To</th><th>Confidence</th><th>Status</th><th>Why</th></tr>
               </thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={`${r.sourceField}-${i}`}>
-                    <td className="fname">{r.sourceField}</td>
+                    <td className="fname">{r.sourceField.toUpperCase()}</td>
                     <td>
                       <select
                         style={{ minWidth: 180 }}
@@ -240,26 +309,99 @@ export default function MappingPage({
                       >
                         <option value="">&mdash; No match &mdash;</option>
                         {target.fields.map((tf) => (
-                          <option key={tf.name} value={tf.name}>{tf.name}</option>
+                          <option key={tf.name} value={tf.name}>{tf.name.toUpperCase()}</option>
                         ))}
                       </select>
                     </td>
                     <td><ConfidenceBadge pct={r.confidence} /></td>
                     <td><StatusPill status={r.status} /></td>
+                    <td className="match-reason">{r.reason}</td>
+                  </tr>
+                ))}
+                {unmappedTargets.map((n) => (
+                  <tr key={`unmapped-${n}`}>
+                    <td className="fdim">&mdash; No source field &mdash;</td>
+                    <td className="fname">{n.toUpperCase()}</td>
+                    <td><ConfidenceBadge pct={null} /></td>
+                    <td><StatusPill status="unmatched" /></td>
+                    <td className="match-reason">No source field scored high enough confidence to suggest a match to this field.</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {unmappedTargets.length > 0 && (
-            <div className="unmapped-box">
-              <h4>Unmapped fields in {target.name}</h4>
-              <div className="chip-row">
-                {unmappedTargets.map((n) => <span className="chip" key={n}>{n}</span>)}
-              </div>
-            </div>
-          )}
         </>
+      )}
+
+      <div style={{ marginTop: 56 }}>
+        <div className="toolbar">
+          <p className="page-eyebrow" style={{ margin: 0 }}>Saved Mappings</p>
+        </div>
+        {loadingSaved ? (
+          <p className="page-sub">Loading saved mappings&hellip;</p>
+        ) : savedMappings.length === 0 ? (
+          <p className="page-sub">
+            No mappings have been saved yet. Run a mapping above, then click &ldquo;Save Mapping&rdquo; to keep a
+            shared record of it.
+          </p>
+        ) : (
+          <div className="field-table">
+            <table>
+              <thead>
+                <tr><th>Mapping</th><th>Saved By</th><th>Saved On</th><th>Fields</th><th></th></tr>
+              </thead>
+              <tbody>
+                {savedMappings.map((m) => {
+                  const matched = m.rows.filter((r) => r.targetField).length;
+                  const savedOn = new Date(m.createdAt).toLocaleDateString(undefined, {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                  });
+                  return (
+                    <tr key={m.id} className="clickable-row" onClick={() => setViewingSaved(m)}>
+                      <td className="fname">{m.sourceName} &rarr; {m.targetName}</td>
+                      <td className="fdim">{m.savedBy}</td>
+                      <td className="fdim">{savedOn}</td>
+                      <td className="fdim">{matched}/{m.rows.length} matched</td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={(e) => { e.stopPropagation(); exportMappingToExcel(m.sourceName, m.targetName, m.rows); }}
+                        >
+                          Export
+                        </button>{' '}
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: 'var(--rose)' }}
+                          onClick={(e) => { e.stopPropagation(); setPendingDeleteSaved(m); }}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {pendingDeleteSaved && (
+        <ConfirmDialog
+          title="Delete saved mapping?"
+          message={`This removes the saved mapping "${pendingDeleteSaved.sourceName} \u2192 ${pendingDeleteSaved.targetName}" saved by ${pendingDeleteSaved.savedBy}. This can't be undone.`}
+          confirmLabel="Delete Mapping"
+          onCancel={() => setPendingDeleteSaved(null)}
+          onConfirm={async () => {
+            const id = pendingDeleteSaved.id;
+            setPendingDeleteSaved(null);
+            await handleDeleteSavedMapping(id);
+          }}
+        />
+      )}
+
+      {viewingSaved && (
+        <SavedMappingModal mapping={viewingSaved} onClose={() => setViewingSaved(null)} />
       )}
     </>
   );

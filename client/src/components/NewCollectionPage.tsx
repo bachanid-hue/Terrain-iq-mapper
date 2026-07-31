@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Collection, CollectionType, Field } from '../../../shared/types';
 import { parseFieldsFromFile } from '../lib/parseExcel';
+import FieldListTable from './FieldListTable';
 
 export default function NewCollectionPage({
   collections,
@@ -9,10 +10,11 @@ export default function NewCollectionPage({
 }: {
   collections: Collection[];
   onCancel: () => void;
-  onSave: (input: { name: string; type: CollectionType; fileName: string; fields: Field[] }) => Promise<void>;
+  onSave: (input: { name: string; type: CollectionType; fileName: string; fields: Field[]; createdBy: string }) => Promise<void>;
 }) {
   const [name, setName] = useState('');
-  const [type, setType] = useState<CollectionType>('Security Data');
+  const [type, setType] = useState<CollectionType | ''>('');
+  const [createdBy, setCreatedBy] = useState('');
   const [fields, setFields] = useState<Field[] | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,14 +41,16 @@ export default function NewCollectionPage({
     }
   }
 
-  const canSave = trimmedName.length > 0 && !isDuplicateName && !!fields && fields.length > 0 && !saving;
+  const trimmedCreatedBy = createdBy.trim();
+  const canSave =
+    trimmedName.length > 0 && !isDuplicateName && !!type && !!fields && fields.length > 0 && !!trimmedCreatedBy && !saving;
 
   async function handleSave() {
-    if (!canSave || !fields || !fileName) return;
+    if (!canSave || !fields || !fileName || !type) return;
     setSaving(true);
     setError(null);
     try {
-      await onSave({ name: trimmedName, type, fileName, fields });
+      await onSave({ name: trimmedName, type, fileName, fields, createdBy: trimmedCreatedBy });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save collection.');
       setSaving(false);
@@ -79,10 +83,21 @@ export default function NewCollectionPage({
         <div className="field-group">
           <label className="field-label">Collection Type</label>
           <select value={type} onChange={(e) => setType(e.target.value as CollectionType)}>
+            <option value="" disabled hidden>&mdash; Select a collection type &mdash;</option>
             <option value="Security Data">Security Data</option>
             <option value="Positions Data">Positions Data</option>
             <option value="Holdings Data">Holdings Data</option>
           </select>
+        </div>
+
+        <div className="field-group">
+          <label className="field-label">Created By</label>
+          <input
+            type="text"
+            placeholder="Your name"
+            value={createdBy}
+            onChange={(e) => setCreatedBy(e.target.value)}
+          />
         </div>
 
         <div className="field-group">
@@ -141,14 +156,7 @@ export default function NewCollectionPage({
           <div className="toolbar">
             <p className="page-eyebrow" style={{ margin: 0 }}>{fields.length} Fields Detected</p>
           </div>
-          <div className="field-grid">
-            {fields.map((f, i) => (
-              <div className="field-grid-item" key={`${f.name}-${i}`}>
-                <span className="fi-idx">{String(i + 1).padStart(2, '0')}</span>
-                <span className="fi-name">{f.name}</span>
-              </div>
-            ))}
-          </div>
+          <FieldListTable fields={fields} />
         </div>
       )}
 

@@ -13,7 +13,7 @@ export default function Sidebar({
 
   return (
     <aside className="sidebar">
-      <div className="brand">
+      <div className="brand" onClick={() => onNavigate('home')} style={{ cursor: 'pointer' }}>
         <svg className="brand-mark" width="30" height="30" viewBox="0 0 32 32">
           <circle cx="16" cy="16" r="14" fill="none" stroke="#C9A15C" strokeWidth="1.6" />
           <circle cx="16" cy="16" r="9.5" fill="none" stroke="#C9A15C" strokeWidth="1.6" opacity="0.75" />
@@ -27,6 +27,12 @@ export default function Sidebar({
       </div>
       <div className="sidebar-divider" />
       <nav className="nav">
+        <div className="nav-item" onClick={() => onNavigate('home')}>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path d="M2 8l6-5 6 5M3.5 7v6.5a.5.5 0 00.5.5h3v-4h2v4h3a.5.5 0 00.5-.5V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Home
+        </div>
         <div
           className={`nav-item ${collectionsActive ? 'active' : ''}`}
           onClick={() => onNavigate('dashboard')}

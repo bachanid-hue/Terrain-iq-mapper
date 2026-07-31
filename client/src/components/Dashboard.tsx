@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Collection } from '../../../shared/types';
 import ConfirmDialog from './ConfirmDialog';
 
@@ -7,6 +7,10 @@ const TYPE_META: Record<string, { cls: string; short: string }> = {
   'Positions Data': { cls: 't-positions', short: 'Positions' },
   'Holdings Data': { cls: 't-holdings', short: 'Holdings' },
 };
+
+function formatDate(ts: number): string {
+  return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
 
 export default function Dashboard({
   collections,
@@ -24,6 +28,18 @@ export default function Dashboard({
   onDeleteCollection: (id: string) => Promise<void>;
 }) {
   const [pendingDelete, setPendingDelete] = useState<Collection | null>(null);
+  const [query, setQuery] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return collections;
+    return collections.filter((c) => {
+      const haystack = [c.name, c.type, c.createdBy, formatDate(c.createdAt), c.fileName]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [collections, query]);
 
   return (
     <>
@@ -41,6 +57,24 @@ export default function Dashboard({
           <button className="btn btn-primary" onClick={onNewCollection}>+ New Collection</button>
         )}
       </div>
+
+      {collections.length > 0 && (
+        <div className="search-box">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M12.5 12.5L16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search collections by name, type, creator, date, or file..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <span className="search-box-clear" onClick={() => setQuery('')} title="Clear search">&times;</span>
+          )}
+        </div>
+      )}
 
       {error && <p className="error-text" style={{ marginBottom: 20 }}>{error}</p>}
 
@@ -60,15 +94,18 @@ export default function Dashboard({
           </p>
           <button className="btn btn-primary" onClick={onNewCollection}>+ New Collection</button>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="empty-state">
+          <div className="em-title">No collections match "{query}"</div>
+          <p style={{ maxWidth: 340, margin: '0 auto 18px', fontSize: 13 }}>
+            Try a different name, type, creator, date, or file name.
+          </p>
+          <button className="btn btn-ghost btn-sm" onClick={() => setQuery('')}>Clear search</button>
+        </div>
       ) : (
         <div className="grid">
-          {collections.map((c) => {
+          {filtered.map((c) => {
             const meta = TYPE_META[c.type] || { cls: '', short: c.type };
-            const created = new Date(c.createdAt).toLocaleDateString(undefined, {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            });
             return (
               <div className="card" key={c.id} onClick={() => onOpenCollection(c.id)}>
                 <div
@@ -93,7 +130,8 @@ export default function Dashboard({
                 <div className="card-meta">
                   <span><b>{c.fields.length}</b> fields</span>
                   <span>from {c.fileName}</span>
-                  <span>created {created}</span>
+                  {c.createdBy && <span>by {c.createdBy}</span>}
+                  <span>created {formatDate(c.createdAt)}</span>
                 </div>
               </div>
             );

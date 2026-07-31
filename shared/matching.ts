@@ -92,40 +92,80 @@ function levRatio(a: string, b: string): number {
   return 1 - dist / maxLen;
 }
 
-export function fieldScore(a: string, b: string): number {
+interface MatchDetails {
+  score: number;
+  reason: string;
+}
+
+// Computes both the similarity score AND a brief, human-readable explanation
+// of why it landed where it did — surfaced in the UI as the "Why" column.
+function computeMatch(a: string, b: string): MatchDetails {
   const ta = tokenize(a);
   const tb = tokenize(b);
   const na = normKey(a);
   const nb = normKey(b);
-  if (na && na === nb) return 1;
+
+  if (na && na === nb) {
+    return { score: 1, reason: 'Exact match once case, spacing, and known synonyms are normalized.' };
+  }
+
   const setA = new Set(ta);
   const setB = new Set(tb);
-  const inter = [...setA].filter((x) => setB.has(x)).length;
+  const shared = [...setA].filter((x) => setB.has(x));
+  const inter = shared.length;
   const union = new Set([...setA, ...setB]).size || 1;
   const jaccard = inter / union;
   const lr = levRatio(a.toLowerCase().replace(/\s+/g, ''), b.toLowerCase().replace(/\s+/g, ''));
-  const score = 0.55 * jaccard + 0.35 * lr + 0.1 * (inter > 0 ? 1 : 0);
-  return Math.min(score, 0.99);
+  const score = Math.min(0.55 * jaccard + 0.35 * lr + 0.1 * (inter > 0 ? 1 : 0), 0.99);
+
+  if (jaccard === 1) {
+    return { score, reason: 'All words match after applying synonyms, but formatting or word order differs.' };
+  }
+  if (inter > 0) {
+    const sharedList = shared.slice(0, 3).join(', ');
+    return {
+      score,
+      reason: `Shares recognized word${shared.length > 1 ? 's' : ''} ("${sharedList}") after synonym normalization, but the rest of the name differs.`,
+    };
+  }
+  if (lr >= 0.55) {
+    return { score, reason: 'No shared recognized words, but the raw spelling is close enough to suggest a loose match.' };
+  }
+  if (lr > 0.25) {
+    return { score, reason: 'Only weak spelling similarity was found; no shared words or known synonyms.' };
+  }
+  return { score, reason: 'No shared words, known synonyms, or meaningful spelling similarity were found.' };
+}
+
+export function fieldScore(a: string, b: string): number {
+  return computeMatch(a, b).score;
+}
+
+export function explainMatch(a: string, b: string): MatchDetails {
+  return computeMatch(a, b);
 }
 
 export function runMatching(sourceFields: Field[], targetFields: Field[]): MappingRow[] {
   return sourceFields.map((sf) => {
     let best: Field | null = null;
-    let bestScore = -1;
+    let bestDetails: MatchDetails = { score: -1, reason: '' };
     targetFields.forEach((tf) => {
-      const sc = fieldScore(sf.name, tf.name);
-      if (sc > bestScore) {
-        bestScore = sc;
+      const details = computeMatch(sf.name, tf.name);
+      if (details.score > bestDetails.score) {
+        bestDetails = details;
         best = tf;
       }
     });
-    const confidence = Math.round(bestScore * 100);
+    const confidence = Math.round(bestDetails.score * 100);
     const matched = confidence >= 32 && best !== null;
     return {
       sourceField: sf.name,
       targetField: matched && best ? (best as Field).name : '',
       confidence: matched ? confidence : null,
       status: matched ? 'auto' : 'unmatched',
+      reason: best
+        ? `${bestDetails.reason}${matched ? '' : ` Closest candidate was "${(best as Field).name}", but confidence was too low to suggest.`}`
+        : 'The target collection has no fields to compare against.',
     } as MappingRow;
   });
 }

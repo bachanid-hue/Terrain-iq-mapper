@@ -2,15 +2,16 @@ import { useEffect, useState } from 'react';
 import type { Collection, CollectionType, Field } from '../../shared/types';
 import { api } from './lib/api';
 import Sidebar from './components/Sidebar';
+import HomePage from './components/HomePage';
 import Dashboard from './components/Dashboard';
 import NewCollectionPage from './components/NewCollectionPage';
 import CollectionDetail from './components/CollectionDetail';
 import MappingPage from './components/MappingPage';
 
-export type View = 'dashboard' | 'newCollection' | 'collectionDetail' | 'mapping';
+export type View = 'home' | 'dashboard' | 'newCollection' | 'collectionDetail' | 'mapping';
 
 export default function App() {
-  const [view, setView] = useState<View>('dashboard');
+  const [view, setView] = useState<View>('home');
   const [collections, setCollections] = useState<Collection[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +39,7 @@ export default function App() {
     setView(v);
   }
 
-  async function handleSaveCollection(input: { name: string; type: CollectionType; fileName: string; fields: Field[] }) {
+  async function handleSaveCollection(input: { name: string; type: CollectionType; fileName: string; fields: Field[]; createdBy: string }) {
     const created = await api.createCollection(input);
     setCollections((prev) => [created, ...prev]);
     navigate('dashboard');
@@ -56,6 +57,10 @@ export default function App() {
   }
 
   const activeCollection = collections.find((c) => c.id === activeId) || null;
+
+  if (view === 'home') {
+    return <HomePage onEnter={navigate} />;
+  }
 
   return (
     <div className="shell">
