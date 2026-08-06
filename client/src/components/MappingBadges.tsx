@@ -15,7 +15,7 @@ export function ConfidenceBadge({ pct }: { pct: number | null }) {
         cy="16"
         r={r}
         fill="none"
-        stroke={active ? color : '#3a4451'}
+        stroke={active ? color : 'var(--line)'}
         strokeWidth="1.6"
         strokeDasharray={active ? '' : '2,2'}
         opacity={active ? 1 : 0.6}
@@ -33,5 +33,6 @@ export function ConfidenceBadge({ pct }: { pct: number | null }) {
 export function StatusPill({ status }: { status: MappingRow['status'] }) {
   if (status === 'auto') return <span className="status-pill auto">Auto-matched</span>;
   if (status === 'manual') return <span className="status-pill manual">Manual</span>;
+  if (status === 'ai') return <span className="status-pill ai">AI Suggested</span>;
   return <span className="status-pill unmatched">Unmatched</span>;
 }

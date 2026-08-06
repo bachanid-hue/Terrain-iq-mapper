@@ -1,6 +1,8 @@
 import type { Field } from '../../../shared/types';
 
 export default function FieldListTable({ fields }: { fields: Field[] }) {
+  const hasMeta = fields.some((f) => f.dataType || f.fieldType || f.description);
+
   return (
     <div className="field-table">
       <table>
@@ -8,6 +10,13 @@ export default function FieldListTable({ fields }: { fields: Field[] }) {
           <tr>
             <th style={{ width: 64 }}>#</th>
             <th>Field Name</th>
+            {hasMeta && (
+              <>
+                <th style={{ width: 100 }}>Data Type</th>
+                <th style={{ width: 90 }}>Field Type</th>
+                <th>Description</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -17,6 +26,13 @@ export default function FieldListTable({ fields }: { fields: Field[] }) {
                 {String(i + 1).padStart(2, '0')}
               </td>
               <td className="fname">{f.name.toUpperCase()}</td>
+              {hasMeta && (
+                <>
+                  <td className="fdim">{f.dataType || '\u2014'}</td>
+                  <td className="fdim">{f.fieldType || '\u2014'}</td>
+                  <td className="fdim">{f.description || '\u2014'}</td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>

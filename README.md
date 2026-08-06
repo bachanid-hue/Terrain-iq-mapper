@@ -99,6 +99,24 @@ set the start command to `npm run build && npm start`. Railway's free tier
 includes a small persistent volume you can mount for the SQLite file if you
 want durability without switching databases.
 
+## Optional: AI-assisted matching ("Ask AI")
+
+The deterministic algorithm (synonym dictionary + token overlap + spelling
+similarity) needs no configuration and always works. On top of that, low-confidence
+and unmatched rows in the Map Collections results show an **"Ask AI"** action that
+asks Claude for a second opinion on just that one field — useful for genuinely
+ambiguous industry terminology the synonym dictionary doesn't cover.
+
+To enable it:
+
+1. Get an API key at [console.anthropic.com](https://console.anthropic.com).
+2. **Locally:** copy `server/.env.example` to `server/.env` and paste your key in.
+3. **On Render:** go to your service → **Environment** → add an environment
+   variable named `ANTHROPIC_API_KEY` with your key as the value, then redeploy.
+
+Without a key configured, "Ask AI" simply shows a clear message explaining it
+isn't set up yet — nothing else in the app is affected.
+
 ## Notes
 
 - The matching algorithm is deterministic (synonym dictionary + fuzzy string

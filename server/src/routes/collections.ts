@@ -8,9 +8,13 @@ import {
   findCollectionByName,
   renameCollection,
 } from '../db.js';
-import type { Collection, NewCollectionInput } from '../../../shared/types.js';
+import type { Collection, NewCollectionInput, FieldDataType, FieldKind } from '../../../shared/types.js';
 
-const VALID_TYPES = new Set(['Security Data', 'Positions Data', 'Holdings Data']);
+const VALID_TYPES = new Set(['Security Master', 'Transactions', 'Sync Schedule', 'Amortization Schedule', 'Cancel Schedule']);
+const VALID_SOURCES = new Set(['Corebridge', 'Vendor']);
+const VALID_CLIENT_TYPES = new Set(['Client', 'Vendor']);
+const VALID_DATA_TYPES = new Set(['String', 'Number', 'Date']);
+const VALID_FIELD_TYPES = new Set(['Text', 'List']);
 
 export const collectionsRouter = Router();
 
@@ -33,19 +37,24 @@ collectionsRouter.post('/', (req, res) => {
   const body = req.body as Partial<NewCollectionInput>;
   const name = (body.name || '').trim();
   const type = body.type;
+  const source = body.source;
+  const clientType = body.clientType;
   const fileName = (body.fileName || '').trim();
   const fields = Array.isArray(body.fields) ? body.fields : [];
   const createdBy = (body.createdBy || '').trim();
 
   if (!name) return res.status(400).json({ error: 'Collection name is required.' });
   if (!type || !VALID_TYPES.has(type)) {
-    return res.status(400).json({ error: 'Collection type must be Security, Positions, or Holdings Data.' });
+    return res.status(400).json({ error: 'Category must be Security Master, Transactions, Sync Schedule, Amortization Schedule, or Cancel Schedule.' });
+  }
+  if (!source || !VALID_SOURCES.has(source)) {
+    return res.status(400).json({ error: 'Source must be Corebridge or Vendor.' });
+  }
+  if (!clientType || !VALID_CLIENT_TYPES.has(clientType)) {
+    return res.status(400).json({ error: 'Type must be Client or Vendor.' });
   }
   if (!fields.length) {
     return res.status(400).json({ error: 'At least one field is required.' });
-  }
-  if (!createdBy) {
-    return res.status(400).json({ error: 'Created By is required.' });
   }
   if (findCollectionByName(name)) {
     return res.status(409).json({ error: `A collection named "${name}" already exists. Choose a different name.` });
@@ -55,9 +64,18 @@ collectionsRouter.post('/', (req, res) => {
     id: nanoid(12),
     name,
     type,
+    source,
+    clientType,
     fileName: fileName || 'upload.xlsx',
     createdBy,
-    fields: fields.map((f) => ({ name: String(f.name || '').trim() })).filter((f) => f.name),
+    fields: fields
+      .map((f) => ({
+        name: String(f.name || '').trim(),
+        dataType: VALID_DATA_TYPES.has(f.dataType as string) ? (f.dataType as FieldDataType) : undefined,
+        fieldType: VALID_FIELD_TYPES.has(f.fieldType as string) ? (f.fieldType as FieldKind) : undefined,
+        description: f.description ? String(f.description).trim() : '',
+      }))
+      .filter((f) => f.name),
     createdAt: Date.now(),
   };
 

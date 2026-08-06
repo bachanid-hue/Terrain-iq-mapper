@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Collection, CollectionType, Field } from '../../shared/types';
+import type { Collection, CollectionType, CollectionSource, ClientOrVendorType, Field } from '../../shared/types';
 import { api } from './lib/api';
 import Sidebar from './components/Sidebar';
 import HomePage from './components/HomePage';
@@ -39,7 +39,15 @@ export default function App() {
     setView(v);
   }
 
-  async function handleSaveCollection(input: { name: string; type: CollectionType; fileName: string; fields: Field[]; createdBy: string }) {
+  async function handleSaveCollection(input: {
+    name: string;
+    type: CollectionType;
+    source: CollectionSource;
+    clientType: ClientOrVendorType;
+    fileName: string;
+    fields: Field[];
+    createdBy: string;
+  }) {
     const created = await api.createCollection(input);
     setCollections((prev) => [created, ...prev]);
     navigate('dashboard');

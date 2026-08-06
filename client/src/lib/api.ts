@@ -53,4 +53,9 @@ export const api = {
     }),
   deleteSavedMapping: (id: string) =>
     request<void>(`/mapping/saved/${id}`, { method: 'DELETE' }),
+  askAI: (sourceField: string, targetFields: string[]) =>
+    request<{ targetField: string | null; confidence: number; reason: string }>('/mapping/ask-ai', {
+      method: 'POST',
+      body: JSON.stringify({ sourceField, targetFields }),
+    }),
 };

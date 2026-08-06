@@ -1,16 +1,26 @@
 // Types shared between client and server so both sides agree on the shape
 // of a Collection, a Field, and a Mapping result.
 
-export type CollectionType = 'Security Data' | 'Positions Data' | 'Holdings Data';
+export type CollectionType = 'Security Master' | 'Transactions' | 'Sync Schedule' | 'Amortization Schedule' | 'Cancel Schedule';
+export type CollectionSource = 'Corebridge' | 'Vendor';
+export type ClientOrVendorType = 'Client' | 'Vendor';
+
+export type FieldDataType = 'String' | 'Number' | 'Date';
+export type FieldKind = 'Text' | 'List';
 
 export interface Field {
   name: string;
+  dataType?: FieldDataType;
+  fieldType?: FieldKind;
+  description?: string;
 }
 
 export interface Collection {
   id: string;
   name: string;
-  type: CollectionType;
+  type: CollectionType; // labeled "Category" in the UI
+  source: CollectionSource;
+  clientType: ClientOrVendorType; // labeled "Type" in the UI; auto-set to "Client" unless source is Corebridge
   fileName: string;
   fields: Field[];
   createdBy: string;
@@ -21,12 +31,14 @@ export interface Collection {
 export interface NewCollectionInput {
   name: string;
   type: CollectionType;
+  source: CollectionSource;
+  clientType: ClientOrVendorType;
   fileName: string;
   fields: Field[];
-  createdBy: string;
+  createdBy?: string;
 }
 
-export type MatchStatus = 'auto' | 'manual' | 'unmatched';
+export type MatchStatus = 'auto' | 'manual' | 'unmatched' | 'ai';
 
 export interface MappingRow {
   sourceField: string;

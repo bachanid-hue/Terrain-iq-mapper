@@ -15,10 +15,10 @@ export default function Sidebar({
     <aside className="sidebar">
       <div className="brand" onClick={() => onNavigate('home')} style={{ cursor: 'pointer' }}>
         <svg className="brand-mark" width="30" height="30" viewBox="0 0 32 32">
-          <circle cx="16" cy="16" r="14" fill="none" stroke="#C9A15C" strokeWidth="1.6" />
-          <circle cx="16" cy="16" r="9.5" fill="none" stroke="#C9A15C" strokeWidth="1.6" opacity="0.75" />
-          <circle cx="16" cy="16" r="5" fill="none" stroke="#C9A15C" strokeWidth="1.6" opacity="0.55" />
-          <circle cx="16" cy="16" r="1.6" fill="#E0BA79" />
+          <circle cx="16" cy="16" r="14" fill="none" stroke="var(--brass)" strokeWidth="1.6" />
+          <circle cx="16" cy="16" r="9.5" fill="none" stroke="var(--brass)" strokeWidth="1.6" opacity="0.75" />
+          <circle cx="16" cy="16" r="5" fill="none" stroke="var(--brass)" strokeWidth="1.6" opacity="0.55" />
+          <circle cx="16" cy="16" r="1.6" fill="var(--brass-bright)" />
         </svg>
         <div className="brand-name">
           Terrain IQ

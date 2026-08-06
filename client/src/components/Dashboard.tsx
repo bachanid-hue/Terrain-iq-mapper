@@ -3,9 +3,11 @@ import type { Collection } from '../../../shared/types';
 import ConfirmDialog from './ConfirmDialog';
 
 const TYPE_META: Record<string, { cls: string; short: string }> = {
-  'Security Data': { cls: 't-security', short: 'Security' },
-  'Positions Data': { cls: 't-positions', short: 'Positions' },
-  'Holdings Data': { cls: 't-holdings', short: 'Holdings' },
+  'Security Master': { cls: 't-security', short: 'Security Master' },
+  'Transactions': { cls: 't-positions', short: 'Transactions' },
+  'Sync Schedule': { cls: 't-holdings', short: 'Sync Schedule' },
+  'Amortization Schedule': { cls: '', short: 'Amortization' },
+  'Cancel Schedule': { cls: '', short: 'Cancel Schedule' },
 };
 
 function formatDate(ts: number): string {
@@ -83,9 +85,9 @@ export default function Dashboard({
       ) : collections.length === 0 ? (
         <div className="empty-state">
           <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-            <circle cx="22" cy="22" r="19" stroke="#98A2AF" strokeWidth="1.3" />
-            <circle cx="22" cy="22" r="12" stroke="#98A2AF" strokeWidth="1.3" />
-            <circle cx="22" cy="22" r="5" stroke="#98A2AF" strokeWidth="1.3" />
+            <circle cx="22" cy="22" r="19" stroke="var(--text-faint)" strokeWidth="1.3" />
+            <circle cx="22" cy="22" r="12" stroke="var(--text-faint)" strokeWidth="1.3" />
+            <circle cx="22" cy="22" r="5" stroke="var(--text-faint)" strokeWidth="1.3" />
           </svg>
           <div className="em-title">No collections yet</div>
           <p style={{ maxWidth: 340, margin: '0 auto 18px', fontSize: 13 }}>

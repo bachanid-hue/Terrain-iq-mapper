@@ -36,10 +36,10 @@ export default function HomePage({ onEnter }: { onEnter: (v: View) => void }) {
       <section id="home" className="home-hero">
         <div className="home-contour-bg" aria-hidden="true">
           <svg viewBox="0 0 1200 500" preserveAspectRatio="none">
-            <path d="M-50 380 Q 250 300 550 380 T 1250 360" fill="none" stroke="#C9A15C" strokeWidth="1" opacity="0.18" />
-            <path d="M-50 420 Q 250 340 550 420 T 1250 400" fill="none" stroke="#C9A15C" strokeWidth="1" opacity="0.14" />
-            <path d="M-50 460 Q 250 390 550 460 T 1250 440" fill="none" stroke="#4FA8A0" strokeWidth="1" opacity="0.14" />
-            <path d="M-50 100 Q 250 40 550 100 T 1250 80" fill="none" stroke="#4FA8A0" strokeWidth="1" opacity="0.1" />
+            <path d="M-50 380 Q 250 300 550 380 T 1250 360" fill="none" stroke="var(--brass)" strokeWidth="1" opacity="0.18" />
+            <path d="M-50 420 Q 250 340 550 420 T 1250 400" fill="none" stroke="var(--brass)" strokeWidth="1" opacity="0.14" />
+            <path d="M-50 460 Q 250 390 550 460 T 1250 440" fill="none" stroke="var(--teal)" strokeWidth="1" opacity="0.14" />
+            <path d="M-50 100 Q 250 40 550 100 T 1250 80" fill="none" stroke="var(--teal)" strokeWidth="1" opacity="0.1" />
           </svg>
         </div>
 

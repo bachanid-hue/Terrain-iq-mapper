@@ -53,6 +53,7 @@ export default function MappingPage({
   const [rows, setRows] = useState<MappingRow[] | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [askingIndex, setAskingIndex] = useState<number | null>(null);
 
   const [savedMappings, setSavedMappings] = useState<SavedMapping[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(true);
@@ -161,6 +162,39 @@ export default function MappingPage({
     }
     next[idx] = row;
     setRows(next);
+  }
+
+  async function handleAskAI(idx: number) {
+    if (!rows || !target) return;
+    const row = rows[idx];
+    setAskingIndex(idx);
+    setError(null);
+    try {
+      const result = await api.askAI(row.sourceField, target.fields.map((f) => f.name));
+      const next = [...rows];
+      if (result.targetField) {
+        next[idx] = {
+          sourceField: row.sourceField,
+          targetField: result.targetField,
+          confidence: result.confidence,
+          status: 'ai',
+          reason: result.reason,
+        };
+      } else {
+        next[idx] = {
+          sourceField: row.sourceField,
+          targetField: '',
+          confidence: null,
+          status: 'unmatched',
+          reason: result.reason,
+        };
+      }
+      setRows(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to get an AI suggestion.');
+    } finally {
+      setAskingIndex(null);
+    }
   }
 
   async function handleSaveMapping() {
@@ -298,7 +332,9 @@ export default function MappingPage({
                 <tr><th>Source Field</th><th>Mapped To</th><th>Confidence</th><th>Status</th><th>Why</th></tr>
               </thead>
               <tbody>
-                {rows.map((r, i) => (
+                {rows.map((r, i) => {
+                  const isLowConfidence = r.status !== 'ai' && (r.status === 'unmatched' || (r.confidence !== null && r.confidence < 70));
+                  return (
                   <tr key={`${r.sourceField}-${i}`}>
                     <td className="fname">{r.sourceField.toUpperCase()}</td>
                     <td>
@@ -315,9 +351,23 @@ export default function MappingPage({
                     </td>
                     <td><ConfidenceBadge pct={r.confidence} /></td>
                     <td><StatusPill status={r.status} /></td>
-                    <td className="match-reason">{r.reason}</td>
+                    <td className="match-reason">
+                      {r.reason}
+                      {isLowConfidence && (
+                        <div>
+                          <button
+                            className="ask-ai-btn"
+                            disabled={askingIndex === i}
+                            onClick={() => handleAskAI(i)}
+                          >
+                            {askingIndex === i ? 'Asking AI…' : '✨ Ask AI'}
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {unmappedTargets.map((n) => (
                   <tr key={`unmapped-${n}`}>
                     <td className="fdim">&mdash; No source field &mdash;</td>

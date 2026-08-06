@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Collection, CollectionType, Field, SavedMapping } from '../../shared/types.js';
+import type { Collection, CollectionType, CollectionSource, ClientOrVendorType, Field, SavedMapping } from '../../shared/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -45,6 +45,16 @@ try {
 } catch {
   /* column already exists — nothing to do */
 }
+try {
+  db.exec(`ALTER TABLE collections ADD COLUMN source TEXT NOT NULL DEFAULT ''`);
+} catch {
+  /* column already exists — nothing to do */
+}
+try {
+  db.exec(`ALTER TABLE collections ADD COLUMN client_type TEXT NOT NULL DEFAULT ''`);
+} catch {
+  /* column already exists — nothing to do */
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS mappings (
@@ -63,6 +73,8 @@ interface CollectionRow {
   id: string;
   name: string;
   type: string;
+  source: string;
+  client_type: string;
   file_name: string;
   fields: string;
   created_by: string;
@@ -74,6 +86,8 @@ function rowToCollection(row: CollectionRow): Collection {
     id: row.id,
     name: row.name,
     type: row.type as CollectionType,
+    source: (row.source || '') as CollectionSource,
+    clientType: (row.client_type || '') as ClientOrVendorType,
     fileName: row.file_name,
     fields: JSON.parse(row.fields) as Field[],
     createdBy: row.created_by || '',
@@ -115,12 +129,14 @@ export function renameCollection(id: string, name: string): Collection | undefin
 
 export function insertCollection(c: Collection): void {
   db.prepare(
-    `INSERT INTO collections (id, name, type, file_name, fields, created_by, created_at)
-     VALUES (@id, @name, @type, @fileName, @fields, @createdBy, @createdAt)`
+    `INSERT INTO collections (id, name, type, source, client_type, file_name, fields, created_by, created_at)
+     VALUES (@id, @name, @type, @source, @clientType, @fileName, @fields, @createdBy, @createdAt)`
   ).run({
     id: c.id,
     name: c.name,
     type: c.type,
+    source: c.source,
+    clientType: c.clientType,
     fileName: c.fileName,
     fields: JSON.stringify(c.fields),
     createdBy: c.createdBy,

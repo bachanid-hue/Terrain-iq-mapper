@@ -4,9 +4,11 @@ import ConfirmDialog from './ConfirmDialog';
 import FieldListTable from './FieldListTable';
 
 const TYPE_META: Record<string, { cls: string; short: string }> = {
-  'Security Data': { cls: 't-security', short: 'Security' },
-  'Positions Data': { cls: 't-positions', short: 'Positions' },
-  'Holdings Data': { cls: 't-holdings', short: 'Holdings' },
+  'Security Master': { cls: 't-security', short: 'Security Master' },
+  'Transactions': { cls: 't-positions', short: 'Transactions' },
+  'Sync Schedule': { cls: 't-holdings', short: 'Sync Schedule' },
+  'Amortization Schedule': { cls: '', short: 'Amortization' },
+  'Cancel Schedule': { cls: '', short: 'Cancel Schedule' },
 };
 
 export default function CollectionDetail({
@@ -74,6 +76,8 @@ export default function CollectionDetail({
       <div className="detail-head">
         <div style={{ flex: 1, minWidth: 260 }}>
           <span className={`type-tag ${meta.cls}`}>{meta.short}</span>
+          {collection.source && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.source}</span>}
+          {collection.clientType && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.clientType}</span>}
 
           {editing ? (
             <div style={{ marginTop: 10, maxWidth: 480 }}>
