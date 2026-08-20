@@ -10,9 +10,10 @@ import {
 } from '../db.js';
 import type { Collection, NewCollectionInput, FieldDataType, FieldKind } from '../../../shared/types.js';
 
-const VALID_TYPES = new Set(['Security Master', 'Transactions', 'Sync Schedule', 'Amortization Schedule', 'Cancel Schedule']);
-const VALID_SOURCES = new Set(['Corebridge', 'Vendor']);
-const VALID_CLIENT_TYPES = new Set(['Client', 'Vendor']);
+const VALID_TYPES = new Set(['Security Master', 'Transactions', 'Positions', 'Holdings']);
+const VALID_SOURCES = new Set(['Aladdin', 'Deal Flow', 'iLevel', 'IDR']);
+const VALID_CLIENT_TYPES = new Set(['Internal', 'External']);
+const VALID_STATUSES = new Set(['Draft', 'Live']);
 const VALID_DATA_TYPES = new Set(['String', 'Number', 'Date']);
 const VALID_FIELD_TYPES = new Set(['Text', 'List']);
 
@@ -39,19 +40,23 @@ collectionsRouter.post('/', (req, res) => {
   const type = body.type;
   const source = body.source;
   const clientType = body.clientType;
+  const status = body.status;
   const fileName = (body.fileName || '').trim();
   const fields = Array.isArray(body.fields) ? body.fields : [];
   const createdBy = (body.createdBy || '').trim();
 
   if (!name) return res.status(400).json({ error: 'Collection name is required.' });
   if (!type || !VALID_TYPES.has(type)) {
-    return res.status(400).json({ error: 'Category must be Security Master, Transactions, Sync Schedule, Amortization Schedule, or Cancel Schedule.' });
+    return res.status(400).json({ error: 'Category must be Security Master, Transactions, Positions, or Holdings.' });
   }
   if (!source || !VALID_SOURCES.has(source)) {
-    return res.status(400).json({ error: 'Source must be Corebridge or Vendor.' });
+    return res.status(400).json({ error: 'Source System must be Aladdin, Deal Flow, iLevel, or IDR.' });
   }
   if (!clientType || !VALID_CLIENT_TYPES.has(clientType)) {
-    return res.status(400).json({ error: 'Type must be Client or Vendor.' });
+    return res.status(400).json({ error: 'Type must be Internal or External.' });
+  }
+  if (!status || !VALID_STATUSES.has(status)) {
+    return res.status(400).json({ error: 'Status must be Draft or Live.' });
   }
   if (!fields.length) {
     return res.status(400).json({ error: 'At least one field is required.' });
@@ -66,8 +71,11 @@ collectionsRouter.post('/', (req, res) => {
     type,
     source,
     clientType,
+    status,
     fileName: fileName || 'upload.xlsx',
     createdBy,
+    editedBy: '',
+    editedAt: null,
     fields: fields
       .map((f) => ({
         name: String(f.name || '').trim(),

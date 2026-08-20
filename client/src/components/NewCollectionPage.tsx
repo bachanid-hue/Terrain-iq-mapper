@@ -1,5 +1,14 @@
 import { useRef, useState } from 'react';
-import type { Collection, CollectionType, CollectionSource, ClientOrVendorType, Field, FieldDataType, FieldKind } from '../../../shared/types';
+import type {
+  Collection,
+  CollectionType,
+  CollectionSource,
+  InternalOrExternalType,
+  CollectionStatus,
+  Field,
+  FieldDataType,
+  FieldKind,
+} from '../../../shared/types';
 import { parseFieldsFromFile } from '../lib/parseExcel';
 
 export default function NewCollectionPage({
@@ -13,7 +22,8 @@ export default function NewCollectionPage({
     name: string;
     type: CollectionType;
     source: CollectionSource;
-    clientType: ClientOrVendorType;
+    clientType: InternalOrExternalType;
+    status: CollectionStatus;
     fileName: string;
     fields: Field[];
     createdBy: string;
@@ -22,11 +32,10 @@ export default function NewCollectionPage({
   const [name, setName] = useState('');
   const [type, setType] = useState<CollectionType | ''>('');
   const [source, setSource] = useState<CollectionSource | ''>('');
-  // clientType only matters when source is anything other than Corebridge —
-  // when source is Corebridge, Type is forced to "Client" below (see
-  // effectiveClientType) and the field is disabled.
-  const [clientType, setClientType] = useState<ClientOrVendorType | ''>('');
+  const [clientType, setClientType] = useState<InternalOrExternalType | ''>('');
+  const [status, setStatus] = useState<CollectionStatus | ''>('');
   const [fields, setFields] = useState<Field[] | null>(null);
+  const [selected, setSelected] = useState<boolean[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -37,17 +46,7 @@ export default function NewCollectionPage({
   const isDuplicateName =
     trimmedName.length > 0 && collections.some((c) => c.name.toLowerCase() === trimmedName.toLowerCase());
 
-  // Type is forced to "Client" and disabled when Source is Corebridge.
-  // For any other source (or no source chosen yet), Type is user-editable.
-  const typeIsEditable = source !== 'Corebridge';
-  const effectiveClientType: ClientOrVendorType | '' = typeIsEditable ? clientType : 'Client';
-
-  function handleSourceChange(newSource: CollectionSource) {
-    setSource(newSource);
-    setClientType(''); // reset either way — effectiveClientType forces 'Client' when Corebridge regardless
-  }
-
-  const detailsComplete = trimmedName.length > 0 && !!type && !!source && !!effectiveClientType;
+  const detailsComplete = trimmedName.length > 0 && !!type && !!source && !!clientType && !!status;
 
   async function handleFile(file: File) {
     setError(null);
@@ -58,6 +57,7 @@ export default function NewCollectionPage({
         return;
       }
       setFields(parsed);
+      setSelected(new Array(parsed.length).fill(true));
       setFileName(file.name);
     } catch {
       setError("Couldn't read that file. Please upload a valid .xlsx or .xls file.");
@@ -71,18 +71,36 @@ export default function NewCollectionPage({
     setFields(next);
   }
 
+  function toggleSelected(idx: number) {
+    setSelected((prev) => prev.map((s, i) => (i === idx ? !s : s)));
+  }
+
+  function selectAll() {
+    if (!fields) return;
+    setSelected(new Array(fields.length).fill(true));
+  }
+
+  function clearAll() {
+    if (!fields) return;
+    setSelected(new Array(fields.length).fill(false));
+  }
+
+  const selectedFields = fields ? fields.filter((_, i) => selected[i]) : [];
+  const selectedCount = selectedFields.length;
+
   const canSave =
     trimmedName.length > 0 &&
     !isDuplicateName &&
     !!type &&
     !!source &&
-    !!effectiveClientType &&
+    !!clientType &&
+    !!status &&
     !!fields &&
-    fields.length > 0 &&
+    selectedCount > 0 &&
     !saving;
 
   async function handleSave() {
-    if (!canSave || !fields || !fileName || !type || !source || !effectiveClientType) return;
+    if (!canSave || !fields || !fileName || !type || !source || !clientType || !status) return;
     setSaving(true);
     setError(null);
     try {
@@ -90,10 +108,13 @@ export default function NewCollectionPage({
         name: trimmedName,
         type,
         source,
-        clientType: effectiveClientType,
+        clientType,
+        status,
         fileName,
-        fields,
-        createdBy: '',
+        fields: selectedFields,
+        // No login system exists yet — every collection is attributed to a
+        // placeholder user until real auth is built. Swap this out then.
+        createdBy: 'Test User',
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save collection.');
@@ -106,7 +127,9 @@ export default function NewCollectionPage({
     setType('');
     setSource('');
     setClientType('');
+    setStatus('');
     setFields(null);
+    setSelected([]);
     setFileName(null);
     setError(null);
     setDragOver(false);
@@ -118,7 +141,7 @@ export default function NewCollectionPage({
       <div className="back-link" onClick={onCancel}>&larr; All collections</div>
       <p className="page-eyebrow">Data Dictionaries</p>
       <h1 className="page-title">New Collection</h1>
-      <p className="page-sub">Define a data dictionary by name, category, and source, then upload its field listing.</p>
+      <p className="page-sub">Define a data dictionary by name, category, and source system, then upload its field listing.</p>
 
       <div className="details-box">
         <h2 className="details-box-title">Collection Details</h2>
@@ -145,41 +168,38 @@ export default function NewCollectionPage({
               <option value="" disabled hidden>&mdash; Select a category &mdash;</option>
               <option value="Security Master">Security Master</option>
               <option value="Transactions">Transactions</option>
-              <option value="Sync Schedule">Sync Schedule</option>
-              <option value="Amortization Schedule">Amortization Schedule</option>
-              <option value="Cancel Schedule">Cancel Schedule</option>
+              <option value="Positions">Positions</option>
+              <option value="Holdings">Holdings</option>
             </select>
           </div>
 
           <div className="field-group" style={{ marginBottom: 0 }}>
-            <label className="field-label">Source</label>
-            <select value={source} onChange={(e) => handleSourceChange(e.target.value as CollectionSource)}>
-              <option value="" disabled hidden>&mdash; Select a source &mdash;</option>
-              <option value="Corebridge">Corebridge</option>
-              <option value="Vendor">Vendor</option>
+            <label className="field-label">Source System</label>
+            <select value={source} onChange={(e) => setSource(e.target.value as CollectionSource)}>
+              <option value="" disabled hidden>&mdash; Select Source System &mdash;</option>
+              <option value="Aladdin">Aladdin</option>
+              <option value="Deal Flow">Deal Flow</option>
+              <option value="iLevel">iLevel</option>
+              <option value="IDR">IDR</option>
             </select>
           </div>
 
           <div className="field-group" style={{ marginBottom: 0 }}>
             <label className="field-label">Type</label>
-            <select
-              value={effectiveClientType}
-              disabled={!typeIsEditable}
-              onChange={(e) => setClientType(e.target.value as ClientOrVendorType)}
-            >
-              {!typeIsEditable ? (
-                <option value="Client">Client</option>
-              ) : (
-                <>
-                  <option value="" disabled hidden>&mdash; Select a type &mdash;</option>
-                  <option value="Client">Client</option>
-                  <option value="Vendor">Vendor</option>
-                </>
-              )}
+            <select value={clientType} onChange={(e) => setClientType(e.target.value as InternalOrExternalType)}>
+              <option value="" disabled hidden>&mdash; Select a type &mdash;</option>
+              <option value="Internal">Internal</option>
+              <option value="External">External</option>
             </select>
-            {!typeIsEditable && (
-              <p className="field-hint">Automatically set to Client when Source is Corebridge.</p>
-            )}
+          </div>
+
+          <div className="field-group" style={{ marginBottom: 0 }}>
+            <label className="field-label">Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value as CollectionStatus)}>
+              <option value="" disabled hidden>&mdash; Select a status &mdash;</option>
+              <option value="Draft">Draft</option>
+              <option value="Live">Live</option>
+            </select>
           </div>
         </div>
       </div>
@@ -216,16 +236,24 @@ export default function NewCollectionPage({
                 <span
                   className="fc-clear"
                   title="Remove file"
-                  onClick={() => { setFields(null); setFileName(null); setError(null); }}
+                  onClick={() => { setFields(null); setSelected([]); setFileName(null); setError(null); }}
                 >
                   &times;
                 </span>
               </div>
-              <div style={{ maxHeight: 420, overflowY: 'auto', overflowX: 'auto', marginTop: 12 }} className="field-table">
+              <div className="toolbar" style={{ marginTop: 18, marginBottom: 8, alignItems: 'baseline' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button type="button" className="btn btn-ghost btn-sm btn-include-all" onClick={selectAll}>Include All</button>
+                  <button type="button" className="btn btn-ghost btn-sm btn-danger" onClick={clearAll}>Exclude All</button>
+                  <span className="fdim" style={{ fontSize: 12 }}>{selectedCount} of {fields.length} selected</span>
+                </div>
+                <h2 className="details-box-title" style={{ margin: 0 }}>Collection Fields</h2>
+              </div>
+              <div style={{ maxHeight: 420, overflowY: 'auto', overflowX: 'auto' }} className="field-table">
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ width: 48 }}>#</th>
+                      <th style={{ width: 40 }}></th>
                       <th>Field Name</th>
                       <th style={{ width: 130 }}>Data Type</th>
                       <th style={{ width: 110 }}>Field Type</th>
@@ -234,9 +262,14 @@ export default function NewCollectionPage({
                   </thead>
                   <tbody>
                     {fields.map((f, i) => (
-                      <tr key={`${f.name}-${i}`}>
-                        <td className="fdim" style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                          {String(i + 1).padStart(2, '0')}
+                      <tr key={`${f.name}-${i}`} style={{ opacity: selected[i] ? 1 : 0.45 }}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={!!selected[i]}
+                            onChange={() => toggleSelected(i)}
+                            aria-label={`Include ${f.name}`}
+                          />
                         </td>
                         <td className="fname">{f.name.toUpperCase()}</td>
                         <td>

@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Collection, CollectionType, CollectionSource, ClientOrVendorType, Field, SavedMapping } from '../../shared/types.js';
+import type { Collection, CollectionType, CollectionSource, InternalOrExternalType, CollectionStatus, Field, SavedMapping } from '../../shared/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -55,6 +55,21 @@ try {
 } catch {
   /* column already exists — nothing to do */
 }
+try {
+  db.exec(`ALTER TABLE collections ADD COLUMN status TEXT NOT NULL DEFAULT ''`);
+} catch {
+  /* column already exists — nothing to do */
+}
+try {
+  db.exec(`ALTER TABLE collections ADD COLUMN edited_by TEXT NOT NULL DEFAULT ''`);
+} catch {
+  /* column already exists — nothing to do */
+}
+try {
+  db.exec(`ALTER TABLE collections ADD COLUMN edited_at INTEGER`);
+} catch {
+  /* column already exists — nothing to do */
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS mappings (
@@ -75,10 +90,13 @@ interface CollectionRow {
   type: string;
   source: string;
   client_type: string;
+  status: string;
   file_name: string;
   fields: string;
   created_by: string;
   created_at: number;
+  edited_by: string;
+  edited_at: number | null;
 }
 
 function rowToCollection(row: CollectionRow): Collection {
@@ -87,11 +105,14 @@ function rowToCollection(row: CollectionRow): Collection {
     name: row.name,
     type: row.type as CollectionType,
     source: (row.source || '') as CollectionSource,
-    clientType: (row.client_type || '') as ClientOrVendorType,
+    clientType: (row.client_type || '') as InternalOrExternalType,
+    status: (row.status || '') as CollectionStatus,
     fileName: row.file_name,
     fields: JSON.parse(row.fields) as Field[],
     createdBy: row.created_by || '',
     createdAt: row.created_at,
+    editedBy: row.edited_by || '',
+    editedAt: row.edited_at ?? null,
   };
 }
 
@@ -122,25 +143,36 @@ export function findCollectionByName(name: string, excludeId?: string): Collecti
   return row ? rowToCollection(row) : undefined;
 }
 
-export function renameCollection(id: string, name: string): Collection | undefined {
-  db.prepare('UPDATE collections SET name = ? WHERE id = ?').run(name, id);
+// Renaming counts as an edit — stamps edited_by/edited_at so the card can
+// show who last touched the collection and when. edited_by defaults to the
+// same placeholder as created_by until a real login system exists.
+export function renameCollection(id: string, name: string, editedBy = 'Test User'): Collection | undefined {
+  db.prepare('UPDATE collections SET name = ?, edited_by = ?, edited_at = ? WHERE id = ?').run(
+    name,
+    editedBy,
+    Date.now(),
+    id
+  );
   return getCollection(id);
 }
 
 export function insertCollection(c: Collection): void {
   db.prepare(
-    `INSERT INTO collections (id, name, type, source, client_type, file_name, fields, created_by, created_at)
-     VALUES (@id, @name, @type, @source, @clientType, @fileName, @fields, @createdBy, @createdAt)`
+    `INSERT INTO collections (id, name, type, source, client_type, status, file_name, fields, created_by, created_at, edited_by, edited_at)
+     VALUES (@id, @name, @type, @source, @clientType, @status, @fileName, @fields, @createdBy, @createdAt, @editedBy, @editedAt)`
   ).run({
     id: c.id,
     name: c.name,
     type: c.type,
     source: c.source,
     clientType: c.clientType,
+    status: c.status,
     fileName: c.fileName,
     fields: JSON.stringify(c.fields),
     createdBy: c.createdBy,
     createdAt: c.createdAt,
+    editedBy: c.editedBy,
+    editedAt: c.editedAt,
   });
 }
 

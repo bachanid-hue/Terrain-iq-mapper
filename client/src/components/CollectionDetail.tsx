@@ -5,10 +5,9 @@ import FieldListTable from './FieldListTable';
 
 const TYPE_META: Record<string, { cls: string; short: string }> = {
   'Security Master': { cls: 't-security', short: 'Security Master' },
-  'Transactions': { cls: 't-positions', short: 'Transactions' },
-  'Sync Schedule': { cls: 't-holdings', short: 'Sync Schedule' },
-  'Amortization Schedule': { cls: '', short: 'Amortization' },
-  'Cancel Schedule': { cls: '', short: 'Cancel Schedule' },
+  'Transactions': { cls: '', short: 'Transactions' },
+  'Positions': { cls: 't-positions', short: 'Positions' },
+  'Holdings': { cls: 't-holdings', short: 'Holdings' },
 };
 
 export default function CollectionDetail({
@@ -78,6 +77,7 @@ export default function CollectionDetail({
           <span className={`type-tag ${meta.cls}`}>{meta.short}</span>
           {collection.source && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.source}</span>}
           {collection.clientType && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.clientType}</span>}
+          {collection.status && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.status}</span>}
 
           {editing ? (
             <div style={{ marginTop: 10, maxWidth: 480 }}>
@@ -123,6 +123,7 @@ export default function CollectionDetail({
         </div>
         <button className="btn btn-danger btn-sm" onClick={() => setConfirming(true)}>Delete collection</button>
       </div>
+      <h2 className="details-box-title" style={{ marginBottom: 10 }}>Collection Fields</h2>
       <FieldListTable fields={collection.fields} />
 
       {confirming && (

@@ -2,16 +2,72 @@ import { useMemo, useState } from 'react';
 import type { Collection } from '../../../shared/types';
 import ConfirmDialog from './ConfirmDialog';
 
-const TYPE_META: Record<string, { cls: string; short: string }> = {
-  'Security Master': { cls: 't-security', short: 'Security Master' },
-  'Transactions': { cls: 't-positions', short: 'Transactions' },
-  'Sync Schedule': { cls: 't-holdings', short: 'Sync Schedule' },
-  'Amortization Schedule': { cls: '', short: 'Amortization' },
-  'Cancel Schedule': { cls: '', short: 'Cancel Schedule' },
-};
-
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function dash(v: string | undefined | null): string {
+  return v && v.trim() ? v : '\u2014';
+}
+
+function CollectionCard({
+  c,
+  onOpen,
+  onRequestDelete,
+}: {
+  c: Collection;
+  onOpen: () => void;
+  onRequestDelete: () => void;
+}) {
+  const statusKey = (c.status || '').toLowerCase();
+
+  return (
+    <div className="cc-card" onClick={onOpen}>
+      <div
+        className="card-del"
+        title="Delete collection"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRequestDelete();
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+          <path
+            d="M2 4h12M6 4V2.5A1 1 0 017 1.5h2a1 1 0 011 1V4M12.5 4l-.6 9a1 1 0 01-1 .9H5.1a1 1 0 01-1-.9L3.5 4"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
+
+      <div className="cc-header">
+        <div className="cc-title">
+          <span className="cc-accent" />
+          <h3 className="cc-name">{c.name}</h3>
+        </div>
+        {c.status && (
+          <span className={`cc-status cc-status-${statusKey}`}>{c.status.toUpperCase()}</span>
+        )}
+      </div>
+
+      <div className="cc-grid">
+        <div className="cc-col">
+          <div className="cc-row"><span className="cc-label">Field Count</span><span className="cc-value">{c.fields.length}</span></div>
+          <div className="cc-row"><span className="cc-label">Category</span><span className="cc-value">{dash(c.type)}</span></div>
+          <div className="cc-row"><span className="cc-label">Source System</span><span className="cc-value">{dash(c.source)}</span></div>
+          <div className="cc-row"><span className="cc-label">Source Type</span><span className="cc-value">{dash(c.clientType)}</span></div>
+          <div className="cc-row"><span className="cc-label">Source File</span><span className="cc-value cc-file">{dash(c.fileName)}</span></div>
+        </div>
+        <div className="cc-col">
+          <div className="cc-row"><span className="cc-label">Created On</span><span className="cc-value">{formatDate(c.createdAt)}</span></div>
+          <div className="cc-row"><span className="cc-label">Created By</span><span className="cc-value">{dash(c.createdBy)}</span></div>
+          <div className="cc-row"><span className="cc-label">Edited On</span><span className="cc-value">{c.editedAt ? formatDate(c.editedAt) : '\u2014'}</span></div>
+          <div className="cc-row"><span className="cc-label">Edited By</span><span className="cc-value">{dash(c.editedBy)}</span></div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard({
@@ -105,39 +161,15 @@ export default function Dashboard({
           <button className="btn btn-ghost btn-sm" onClick={() => setQuery('')}>Clear search</button>
         </div>
       ) : (
-        <div className="grid">
-          {filtered.map((c) => {
-            const meta = TYPE_META[c.type] || { cls: '', short: c.type };
-            return (
-              <div className="card" key={c.id} onClick={() => onOpenCollection(c.id)}>
-                <div
-                  className="card-del"
-                  title="Delete collection"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPendingDelete(c);
-                  }}
-                >
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                    <path
-                      d="M2 4h12M6 4V2.5A1 1 0 017 1.5h2a1 1 0 011 1V4M12.5 4l-.6 9a1 1 0 01-1 .9H5.1a1 1 0 01-1-.9L3.5 4"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </div>
-                <span className={`type-tag ${meta.cls}`}>{meta.short}</span>
-                <h3 className="card-name">{c.name}</h3>
-                <div className="card-meta">
-                  <span><b>{c.fields.length}</b> fields</span>
-                  <span>from {c.fileName}</span>
-                  {c.createdBy && <span>by {c.createdBy}</span>}
-                  <span>created {formatDate(c.createdAt)}</span>
-                </div>
-              </div>
-            );
-          })}
+        <div className="grid cc-grid-wrap">
+          {filtered.map((c) => (
+            <CollectionCard
+              key={c.id}
+              c={c}
+              onOpen={() => onOpenCollection(c.id)}
+              onRequestDelete={() => setPendingDelete(c)}
+            />
+          ))}
         </div>
       )}
 

@@ -1,9 +1,10 @@
 // Types shared between client and server so both sides agree on the shape
 // of a Collection, a Field, and a Mapping result.
 
-export type CollectionType = 'Security Master' | 'Transactions' | 'Sync Schedule' | 'Amortization Schedule' | 'Cancel Schedule';
-export type CollectionSource = 'Corebridge' | 'Vendor';
-export type ClientOrVendorType = 'Client' | 'Vendor';
+export type CollectionType = 'Security Master' | 'Transactions' | 'Positions' | 'Holdings';
+export type CollectionSource = 'Aladdin' | 'Deal Flow' | 'iLevel' | 'IDR';
+export type InternalOrExternalType = 'Internal' | 'External';
+export type CollectionStatus = 'Draft' | 'Live';
 
 export type FieldDataType = 'String' | 'Number' | 'Date';
 export type FieldKind = 'Text' | 'List';
@@ -19,12 +20,15 @@ export interface Collection {
   id: string;
   name: string;
   type: CollectionType; // labeled "Category" in the UI
-  source: CollectionSource;
-  clientType: ClientOrVendorType; // labeled "Type" in the UI; auto-set to "Client" unless source is Corebridge
+  source: CollectionSource; // labeled "Source System" in the UI
+  clientType: InternalOrExternalType; // labeled "Type" in the UI
+  status: CollectionStatus;
   fileName: string;
   fields: Field[];
   createdBy: string;
   createdAt: number;
+  editedBy: string;
+  editedAt: number | null; // null until the collection is edited (e.g. renamed) for the first time
 }
 
 // Payload the client sends to create a collection. The server assigns id/createdAt.
@@ -32,7 +36,8 @@ export interface NewCollectionInput {
   name: string;
   type: CollectionType;
   source: CollectionSource;
-  clientType: ClientOrVendorType;
+  clientType: InternalOrExternalType;
+  status: CollectionStatus;
   fileName: string;
   fields: Field[];
   createdBy?: string;

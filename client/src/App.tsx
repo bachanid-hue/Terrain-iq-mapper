@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Collection, CollectionType, CollectionSource, ClientOrVendorType, Field } from '../../shared/types';
+import type { Collection, CollectionType, CollectionSource, InternalOrExternalType, CollectionStatus, Field } from '../../shared/types';
 import { api } from './lib/api';
 import Sidebar from './components/Sidebar';
 import HomePage from './components/HomePage';
@@ -43,7 +43,8 @@ export default function App() {
     name: string;
     type: CollectionType;
     source: CollectionSource;
-    clientType: ClientOrVendorType;
+    clientType: InternalOrExternalType;
+    status: CollectionStatus;
     fileName: string;
     fields: Field[];
     createdBy: string;
