@@ -6,6 +6,9 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { collectionsRouter } from './routes/collections.js';
 import { mappingRouter } from './routes/mapping.js';
+import { categoriesRouter } from './routes/categories.js';
+import { sourceSystemsRouter } from './routes/sourceSystems.js';
+import { adminRouter } from './routes/admin.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8787;
@@ -16,6 +19,9 @@ app.use(express.json({ limit: '5mb' }));
 
 app.use('/api/collections', collectionsRouter);
 app.use('/api/mapping', mappingRouter);
+app.use('/api/categories', categoriesRouter);
+app.use('/api/source-systems', sourceSystemsRouter);
+app.use('/api/admin', adminRouter);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 

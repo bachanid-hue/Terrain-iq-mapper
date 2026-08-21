@@ -1,13 +1,39 @@
 // Types shared between client and server so both sides agree on the shape
 // of a Collection, a Field, and a Mapping result.
 
-export type CollectionType = 'Security Master' | 'Transactions' | 'Positions' | 'Holdings';
-export type CollectionSource = 'Aladdin' | 'Deal Flow' | 'iLevel' | 'IDR';
+// Category and Source System are dynamic, user-managed data persisted in
+// their own tables — collections just reference them by name.
+export type CollectionType = string;
+export type CollectionSource = string;
 export type InternalOrExternalType = 'Internal' | 'External';
 export type CollectionStatus = 'Draft' | 'Live';
 
-export type FieldDataType = 'String' | 'Number' | 'Date';
+export type FieldDataType = 'Text' | 'Number' | 'Date';
 export type FieldKind = 'Text' | 'List';
+
+export interface Category {
+  id: string;
+  name: string;
+  createdBy: string;
+  createdAt: number;
+}
+
+export interface NewCategoryInput {
+  name: string;
+  createdBy?: string;
+}
+
+export interface SourceSystem {
+  id: string;
+  name: string;
+  createdBy: string;
+  createdAt: number;
+}
+
+export interface NewSourceSystemInput {
+  name: string;
+  createdBy?: string;
+}
 
 export interface Field {
   name: string;

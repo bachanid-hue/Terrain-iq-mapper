@@ -7,14 +7,14 @@ import {
   deleteCollection,
   findCollectionByName,
   renameCollection,
+  findCategoryByName,
+  findSourceSystemByName,
 } from '../db.js';
 import type { Collection, NewCollectionInput, FieldDataType, FieldKind } from '../../../shared/types.js';
 
-const VALID_TYPES = new Set(['Security Master', 'Transactions', 'Positions', 'Holdings']);
-const VALID_SOURCES = new Set(['Aladdin', 'Deal Flow', 'iLevel', 'IDR']);
 const VALID_CLIENT_TYPES = new Set(['Internal', 'External']);
 const VALID_STATUSES = new Set(['Draft', 'Live']);
-const VALID_DATA_TYPES = new Set(['String', 'Number', 'Date']);
+const VALID_DATA_TYPES = new Set(['Text', 'Number', 'Date']);
 const VALID_FIELD_TYPES = new Set(['Text', 'List']);
 
 export const collectionsRouter = Router();
@@ -46,11 +46,11 @@ collectionsRouter.post('/', (req, res) => {
   const createdBy = (body.createdBy || '').trim();
 
   if (!name) return res.status(400).json({ error: 'Collection name is required.' });
-  if (!type || !VALID_TYPES.has(type)) {
-    return res.status(400).json({ error: 'Category must be Security Master, Transactions, Positions, or Holdings.' });
+  if (!type || !findCategoryByName(type)) {
+    return res.status(400).json({ error: 'Category must be an existing category. Add it first if it\u2019s new.' });
   }
-  if (!source || !VALID_SOURCES.has(source)) {
-    return res.status(400).json({ error: 'Source System must be Aladdin, Deal Flow, iLevel, or IDR.' });
+  if (!source || !findSourceSystemByName(source)) {
+    return res.status(400).json({ error: 'Source System must be an existing source system. Add it first if it\u2019s new.' });
   }
   if (!clientType || !VALID_CLIENT_TYPES.has(clientType)) {
     return res.status(400).json({ error: 'Type must be Internal or External.' });

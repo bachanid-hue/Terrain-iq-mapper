@@ -28,5 +28,5 @@ export function inferDataType(fieldName: string): FieldDataType {
 
   if (tokens.some((t) => DATE_HINTS.includes(t))) return 'Date';
   if (tokens.some((t) => NUMBER_HINTS.includes(t))) return 'Number';
-  return 'String';
+  return 'Text';
 }

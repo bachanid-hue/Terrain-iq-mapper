@@ -3,13 +3,6 @@ import type { Collection } from '../../../shared/types';
 import ConfirmDialog from './ConfirmDialog';
 import FieldListTable from './FieldListTable';
 
-const TYPE_META: Record<string, { cls: string; short: string }> = {
-  'Security Master': { cls: 't-security', short: 'Security Master' },
-  'Transactions': { cls: '', short: 'Transactions' },
-  'Positions': { cls: 't-positions', short: 'Positions' },
-  'Holdings': { cls: 't-holdings', short: 'Holdings' },
-};
-
 export default function CollectionDetail({
   collection,
   collections,
@@ -33,7 +26,7 @@ export default function CollectionDetail({
     return <p className="page-sub">Collection not found.</p>;
   }
 
-  const meta = TYPE_META[collection.type] || { cls: '', short: collection.type };
+  const categoryLabel = collection.type;
 
   const trimmedEditValue = editValue.trim();
   const isDuplicateName =
@@ -74,7 +67,7 @@ export default function CollectionDetail({
       <div className="back-link" onClick={onBack}>&larr; All collections</div>
       <div className="detail-head">
         <div style={{ flex: 1, minWidth: 260 }}>
-          <span className={`type-tag ${meta.cls}`}>{meta.short}</span>
+          <span className="type-tag">{categoryLabel}</span>
           {collection.source && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.source}</span>}
           {collection.clientType && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.clientType}</span>}
           {collection.status && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.status}</span>}

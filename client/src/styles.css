@@ -168,8 +168,6 @@
   .btn-ghost:hover{ border-color:var(--brass); color:var(--brass-bright); }
   .btn-danger{ background:transparent; color:var(--rose); border-color:var(--line); }
   .btn-danger:hover{ border-color:var(--rose); }
-  .btn-include-all{ background:transparent; color:var(--green); border-color:var(--line); }
-  .btn-include-all:hover{ border-color:var(--green); }
   .btn-danger-solid{ background:var(--rose); color:#fff; border-color:var(--rose); }
   .btn-danger-solid:hover{ background:#a52f22; }
   .btn:disabled{ opacity:.4; cursor:not-allowed; }
@@ -345,7 +343,7 @@
 
   .details-box{
     background:var(--ink-2); border:1px solid var(--line-soft); border-radius:var(--radius);
-    padding:26px; margin-bottom:22px;
+    padding:26px; margin-bottom:30px; box-shadow:0 1px 3px rgba(22,35,59,0.05);
   }
   .details-box .field-table select,
   .details-box .field-table input[type=text]{
@@ -452,6 +450,16 @@
     padding:8px 12px; border-radius:var(--radius); font-size:13.5px; font-family:var(--font-body);
   }
   .save-mapping-form input:focus{ outline:none; border-color:var(--brass); }
+
+  .add-category-form{
+    display:flex; align-items:center; gap:8px;
+  }
+  .add-category-form input{
+    flex:1;
+    background:var(--ink); border:1px solid var(--line); color:var(--text);
+    padding:10px 12px; border-radius:var(--radius); font-size:14px; font-family:var(--font-body);
+  }
+  .add-category-form input:focus{ outline:none; border-color:var(--brass); }
 
   /* Collection detail */
   .back-link{

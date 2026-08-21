@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Collection, CollectionType, CollectionSource, InternalOrExternalType, CollectionStatus, Field, SavedMapping } from '../../shared/types.js';
+import type { Collection, CollectionType, CollectionSource, InternalOrExternalType, CollectionStatus, Field, SavedMapping, Category, SourceSystem } from '../../shared/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -80,6 +80,30 @@ db.exec(`
     target_name TEXT NOT NULL,
     rows TEXT NOT NULL,
     saved_by TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )
+`);
+
+// Categories are user-managed, persisted data (not a hardcoded list) — this
+// is what powers "Add New Category" in the New Collection form. Name is
+// case-insensitively unique at the DB level as a safety net, in addition to
+// the explicit application-level duplicate check in the route handler.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS categories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    created_by TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL
+  )
+`);
+
+// Source System — same pattern as categories: user-managed, persisted,
+// case-insensitively unique, powers "Add New Source System" in the form.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS source_systems (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    created_by TEXT NOT NULL DEFAULT '',
     created_at INTEGER NOT NULL
   )
 `);
@@ -240,4 +264,99 @@ export function insertSavedMapping(m: SavedMapping): void {
 export function deleteSavedMapping(id: string): boolean {
   const result = db.prepare('DELETE FROM mappings WHERE id = ?').run(id);
   return result.changes > 0;
+}
+
+/* ============================= CATEGORIES ============================= */
+
+interface CategoryRow {
+  id: string;
+  name: string;
+  created_by: string;
+  created_at: number;
+}
+
+function rowToCategory(row: CategoryRow): Category {
+  return {
+    id: row.id,
+    name: row.name,
+    createdBy: row.created_by || '',
+    createdAt: row.created_at,
+  };
+}
+
+export function listCategories(): Category[] {
+  const rows = db.prepare('SELECT * FROM categories ORDER BY name ASC').all() as CategoryRow[];
+  return rows.map(rowToCategory);
+}
+
+// Case-insensitive — relies on the column's COLLATE NOCASE.
+export function findCategoryByName(name: string): Category | undefined {
+  const row = db.prepare('SELECT * FROM categories WHERE name = ?').get(name) as CategoryRow | undefined;
+  return row ? rowToCategory(row) : undefined;
+}
+
+export function insertCategory(c: Category): void {
+  db.prepare(
+    `INSERT INTO categories (id, name, created_by, created_at) VALUES (@id, @name, @createdBy, @createdAt)`
+  ).run({
+    id: c.id,
+    name: c.name,
+    createdBy: c.createdBy,
+    createdAt: c.createdAt,
+  });
+}
+
+/* ============================= SOURCE SYSTEMS ============================= */
+
+interface SourceSystemRow {
+  id: string;
+  name: string;
+  created_by: string;
+  created_at: number;
+}
+
+function rowToSourceSystem(row: SourceSystemRow): SourceSystem {
+  return {
+    id: row.id,
+    name: row.name,
+    createdBy: row.created_by || '',
+    createdAt: row.created_at,
+  };
+}
+
+export function listSourceSystems(): SourceSystem[] {
+  const rows = db.prepare('SELECT * FROM source_systems ORDER BY name ASC').all() as SourceSystemRow[];
+  return rows.map(rowToSourceSystem);
+}
+
+// Case-insensitive — relies on the column's COLLATE NOCASE.
+export function findSourceSystemByName(name: string): SourceSystem | undefined {
+  const row = db.prepare('SELECT * FROM source_systems WHERE name = ?').get(name) as
+    | SourceSystemRow
+    | undefined;
+  return row ? rowToSourceSystem(row) : undefined;
+}
+
+export function insertSourceSystem(s: SourceSystem): void {
+  db.prepare(
+    `INSERT INTO source_systems (id, name, created_by, created_at) VALUES (@id, @name, @createdBy, @createdAt)`
+  ).run({
+    id: s.id,
+    name: s.name,
+    createdBy: s.createdBy,
+    createdAt: s.createdAt,
+  });
+}
+
+/* ============================= ADMIN ============================= */
+
+// Wipes every table clean — collections, saved mappings, categories, and
+// source systems. Used by the guarded /api/admin/reset endpoint so someone
+// can start completely fresh, e.g. after test data has accumulated.
+export function resetAllData(): { collections: number; mappings: number; categories: number; sourceSystems: number } {
+  const collections = db.prepare('DELETE FROM collections').run().changes;
+  const mappings = db.prepare('DELETE FROM mappings').run().changes;
+  const categories = db.prepare('DELETE FROM categories').run().changes;
+  const sourceSystems = db.prepare('DELETE FROM source_systems').run().changes;
+  return { collections, mappings, categories, sourceSystems };
 }

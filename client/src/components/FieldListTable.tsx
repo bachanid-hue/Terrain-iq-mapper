@@ -13,7 +13,7 @@ export default function FieldListTable({ fields }: { fields: Field[] }) {
             {hasMeta && (
               <>
                 <th style={{ width: 100 }}>Data Type</th>
-                <th style={{ width: 90 }}>Field Type</th>
+                <th style={{ width: 90 }}>Value Type</th>
                 <th>Description</th>
               </>
             )}

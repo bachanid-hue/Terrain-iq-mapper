@@ -4,6 +4,10 @@ import type {
   MappingResult,
   SavedMapping,
   NewSavedMappingInput,
+  Category,
+  NewCategoryInput,
+  SourceSystem,
+  NewSourceSystemInput,
 } from '../../../shared/types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -57,5 +61,17 @@ export const api = {
     request<{ targetField: string | null; confidence: number; reason: string }>('/mapping/ask-ai', {
       method: 'POST',
       body: JSON.stringify({ sourceField, targetFields }),
+    }),
+  listCategories: () => request<Category[]>('/categories'),
+  createCategory: (input: NewCategoryInput) =>
+    request<Category>('/categories', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  listSourceSystems: () => request<SourceSystem[]>('/source-systems'),
+  createSourceSystem: (input: NewSourceSystemInput) =>
+    request<SourceSystem>('/source-systems', {
+      method: 'POST',
+      body: JSON.stringify(input),
     }),
 };

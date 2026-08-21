@@ -64,8 +64,13 @@ export default function MappingPage({
   const [pendingDeleteSaved, setPendingDeleteSaved] = useState<SavedMapping | null>(null);
   const [viewingSaved, setViewingSaved] = useState<SavedMapping | null>(null);
 
-  const source = collections.find((c) => c.id === sourceId);
-  const target = collections.find((c) => c.id === targetId);
+  // Only Live collections are eligible for mapping — Draft (and anything
+  // not explicitly Live, e.g. legacy collections from before Status existed)
+  // are excluded from the Source/Target dropdowns entirely.
+  const liveCollections = collections.filter((c) => c.status === 'Live');
+
+  const source = liveCollections.find((c) => c.id === sourceId);
+  const target = liveCollections.find((c) => c.id === targetId);
   const bothChosen = sourceId !== '' && targetId !== '';
   const sameCollection = bothChosen && sourceId === targetId;
 
@@ -112,12 +117,23 @@ export default function MappingPage({
     };
   }, []);
 
-  if (collections.length < 2) {
+  if (liveCollections.length === 0) {
     return (
       <>
         <p className="page-eyebrow">AI Field Matching</p>
         <h1 className="page-title">Map Collections</h1>
-        <p className="page-sub">You need at least two collections before you can run a mapping. Create another collection to continue.</p>
+        <p className="page-sub" style={{ color: 'var(--rose)', fontWeight: 600 }}>Currently no Live Collections exist. Only collections marked Live are available for mapping.</p>
+        <button className="btn btn-primary" onClick={onNewCollection}>+ New Collection</button>
+      </>
+    );
+  }
+
+  if (liveCollections.length < 2) {
+    return (
+      <>
+        <p className="page-eyebrow">AI Field Matching</p>
+        <h1 className="page-title">Map Collections</h1>
+        <p className="page-sub">You need at least two Live collections before you can run a mapping. Create another collection, or mark an existing one Live, to continue.</p>
         <button className="btn btn-primary" onClick={onNewCollection}>+ New Collection</button>
       </>
     );
@@ -242,7 +258,7 @@ export default function MappingPage({
           <label className="field-label">Source Collection</label>
           <select value={sourceId} onChange={(e) => { setSourceId(e.target.value); setRows(null); setError(null); setSaveStatus(null); }}>
             <option value="">&mdash; Select a collection &mdash;</option>
-            {collections.map((c) => (
+            {liveCollections.map((c) => (
               <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
             ))}
           </select>
@@ -256,7 +272,7 @@ export default function MappingPage({
           <label className="field-label">Target Collection</label>
           <select value={targetId} onChange={(e) => { setTargetId(e.target.value); setRows(null); setError(null); setSaveStatus(null); }}>
             <option value="">&mdash; Select a collection &mdash;</option>
-            {collections.map((c) => (
+            {liveCollections.map((c) => (
               <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
             ))}
           </select>
