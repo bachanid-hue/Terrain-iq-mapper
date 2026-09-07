@@ -73,7 +73,7 @@ export default function SavedMappingModal({
         <div className="mapping-table" style={{ maxHeight: 420, overflowY: 'auto' }}>
           <table>
             <thead>
-              <tr><th>Source Field</th><th>Mapped To</th><th>Confidence</th><th>Status</th><th>Why</th></tr>
+              <tr><th>{mapping.targetName}</th><th>{mapping.sourceName}</th><th>Status</th><th>Confidence</th><th>Why</th></tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
@@ -85,14 +85,14 @@ export default function SavedMappingModal({
               ) : (
                 filteredRows.map((r, i) => (
                   <tr key={`${r.sourceField}-${r.targetField}-${i}`}>
-                    <td className={r.sourceField ? 'fname' : 'fdim'}>
-                      {r.sourceField ? r.sourceField.toUpperCase() : '\u2014 No source field \u2014'}
-                    </td>
                     <td className={r.targetField ? 'fname' : 'fdim'}>
                       {r.targetField ? r.targetField.toUpperCase() : '\u2014 No match \u2014'}
                     </td>
+                    <td className={r.sourceField ? 'fname' : 'fdim'}>
+                      {r.sourceField ? r.sourceField.toUpperCase() : '\u2014 No source field \u2014'}
+                    </td>
+                    <td><StatusPill confidence={r.confidence} /></td>
                     <td><ConfidenceBadge pct={r.confidence} /></td>
-                    <td><StatusPill status={r.status} /></td>
                     <td className="match-reason">{r.reason || '\u2014'}</td>
                   </tr>
                 ))

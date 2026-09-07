@@ -51,6 +51,10 @@ export default function MappingPage({
   const [sourceId, setSourceId] = useState('');
   const [targetId, setTargetId] = useState('');
   const [rows, setRows] = useState<MappingRow[] | null>(null);
+  // Accepted checkbox per row — keyed by a stable id (row index for matched
+  // rows, field name for the unmapped-target rows below them), storing only
+  // overrides. Defaults to checked whenever a row's status is Matched.
+  const [accepted, setAccepted] = useState<Record<string, boolean>>({});
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [askingIndex, setAskingIndex] = useState<number | null>(null);
@@ -154,11 +158,24 @@ export default function MappingPage({
     try {
       const result = await api.runMapping(sourceId, targetId);
       setRows(result.rows);
+      setAccepted({});
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to run matching.');
     } finally {
       setRunning(false);
     }
+  }
+
+  // A row is "Matched" (per the Status pill) whenever it has any confidence
+  // above 0 — same rule used there, so Accepted defaults to match it.
+  function defaultAccepted(confidence: number | null): boolean {
+    return (confidence ?? 0) > 0;
+  }
+  function isAccepted(key: string, defaultVal: boolean): boolean {
+    return key in accepted ? accepted[key] : defaultVal;
+  }
+  function toggleAccepted(key: string, defaultVal: boolean) {
+    setAccepted((prev) => ({ ...prev, [key]: !isAccepted(key, defaultVal) }));
   }
 
   function updateRowTarget(idx: number, newTargetName: string) {
@@ -175,6 +192,27 @@ export default function MappingPage({
       row.confidence = Math.round(fieldScore(row.sourceField, newTargetName) * 100);
       row.status = 'manual';
       row.reason = 'Manually selected by you, overriding the suggested match.';
+    }
+    next[idx] = row;
+    setRows(next);
+  }
+
+  function updateRowSource(idx: number, newSourceName: string) {
+    if (!rows) return;
+    const next = [...rows];
+    const row = { ...next[idx] };
+    if (!newSourceName) {
+      row.sourceField = '';
+      row.confidence = null;
+      row.status = 'unmatched';
+      row.reason = 'Cleared by you — no source field is currently selected.';
+    } else {
+      row.sourceField = newSourceName;
+      if (row.targetField) {
+        row.confidence = Math.round(fieldScore(newSourceName, row.targetField) * 100);
+        row.status = 'manual';
+        row.reason = 'Manually selected by you, overriding the suggested match.';
+      }
     }
     next[idx] = row;
     setRows(next);
@@ -256,7 +294,21 @@ export default function MappingPage({
       <div className="map-selectors">
         <div>
           <label className="field-label">Source Collection</label>
-          <select value={sourceId} onChange={(e) => { setSourceId(e.target.value); setRows(null); setError(null); setSaveStatus(null); }}>
+          <select
+            value={sourceId}
+            onChange={(e) => {
+              const newSourceId = e.target.value;
+              setSourceId(newSourceId);
+              // If the newly picked source is what's currently sitting in
+              // Target, that selection is no longer valid — Target's list
+              // is about to exclude it, so clear it rather than leave a
+              // stale, now-invisible selection.
+              if (newSourceId && newSourceId === targetId) setTargetId('');
+              setRows(null);
+              setError(null);
+              setSaveStatus(null);
+            }}
+          >
             <option value="">&mdash; Select a collection &mdash;</option>
             {liveCollections.map((c) => (
               <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
@@ -269,10 +321,10 @@ export default function MappingPage({
           </svg>
         </div>
         <div>
-          <label className="field-label">Target Collection</label>
+          <label className="field-label">Destination Collection</label>
           <select value={targetId} onChange={(e) => { setTargetId(e.target.value); setRows(null); setError(null); setSaveStatus(null); }}>
             <option value="">&mdash; Select a collection &mdash;</option>
-            {liveCollections.map((c) => (
+            {liveCollections.filter((c) => c.id !== sourceId).map((c) => (
               <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
             ))}
           </select>
@@ -280,7 +332,7 @@ export default function MappingPage({
       </div>
       <div className="map-cta">
         <button className="btn btn-primary" disabled={!bothChosen || sameCollection || running} onClick={runMatch}>
-          {running ? 'Matching…' : 'Run AI Matching'}
+          {running ? 'Mapping…' : 'Map Collections'}
         </button>
       </div>
       <div style={{ textAlign: 'right' }}>
@@ -295,7 +347,7 @@ export default function MappingPage({
           <p className="page-eyebrow" style={{ marginTop: 4 }}>Field Listings</p>
           <div className="field-preview-panels">
             <FieldColumn collection={source} roleLabel="Source" />
-            <FieldColumn collection={target} roleLabel="Target" />
+            <FieldColumn collection={target} roleLabel="Destination" />
           </div>
         </>
       )}
@@ -308,8 +360,7 @@ export default function MappingPage({
             <div className="stat"><div className="s-num">{source.fields.length - matchedCount}</div><div className="s-lbl">Unmatched</div></div>
             <div className="stat"><div className="s-num">{avgConf}%</div><div className="s-lbl">Avg. Confidence</div></div>
           </div>
-          <div className="toolbar">
-            <p className="page-eyebrow" style={{ margin: 0 }}>{source.name} &rarr; {target.name}</p>
+          <div className="toolbar" style={{ justifyContent: 'flex-end' }}>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-ghost btn-sm" onClick={() => exportMappingToExcel(source.name, target.name, fullRows)}>
                 Export Mapping (.xlsx)
@@ -345,28 +396,40 @@ export default function MappingPage({
           <div className="mapping-table">
             <table>
               <thead>
-                <tr><th>Source Field</th><th>Mapped To</th><th>Confidence</th><th>Status</th><th>Why</th></tr>
+                <tr><th>Accepted</th><th>{source.name}</th><th>{target.name}</th><th>Status</th><th>Confidence</th><th>Why</th></tr>
               </thead>
               <tbody>
                 {rows.map((r, i) => {
                   const isLowConfidence = r.status !== 'ai' && (r.status === 'unmatched' || (r.confidence !== null && r.confidence < 70));
+                  const acceptedKey = `row-${i}`;
+                  const acceptedDefault = defaultAccepted(r.confidence);
                   return (
                   <tr key={`${r.sourceField}-${i}`}>
-                    <td className="fname">{r.sourceField.toUpperCase()}</td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={isAccepted(acceptedKey, acceptedDefault)}
+                        onChange={() => toggleAccepted(acceptedKey, acceptedDefault)}
+                        aria-label={`Accept mapping for ${r.sourceField || 'this row'}`}
+                      />
+                    </td>
                     <td>
                       <select
                         style={{ minWidth: 180 }}
-                        value={r.targetField}
-                        onChange={(e) => updateRowTarget(i, e.target.value)}
+                        value={r.sourceField}
+                        onChange={(e) => updateRowSource(i, e.target.value)}
                       >
                         <option value="">&mdash; No match &mdash;</option>
-                        {target.fields.map((tf) => (
-                          <option key={tf.name} value={tf.name}>{tf.name.toUpperCase()}</option>
+                        {source.fields.map((sf) => (
+                          <option key={sf.name} value={sf.name}>{sf.name.toUpperCase()}</option>
                         ))}
                       </select>
                     </td>
+                    <td className={r.targetField ? 'fname' : 'fdim'}>
+                      {r.targetField ? r.targetField.toUpperCase() : '\u2014 No match \u2014'}
+                    </td>
+                    <td><StatusPill confidence={r.confidence} /></td>
                     <td><ConfidenceBadge pct={r.confidence} /></td>
-                    <td><StatusPill status={r.status} /></td>
                     <td className="match-reason">
                       {r.reason}
                       {isLowConfidence && (
@@ -384,15 +447,26 @@ export default function MappingPage({
                   </tr>
                   );
                 })}
-                {unmappedTargets.map((n) => (
+                {unmappedTargets.map((n) => {
+                  const acceptedKey = `unmapped-${n}`;
+                  return (
                   <tr key={`unmapped-${n}`}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={isAccepted(acceptedKey, false)}
+                        onChange={() => toggleAccepted(acceptedKey, false)}
+                        aria-label={`Accept ${n}`}
+                      />
+                    </td>
                     <td className="fdim">&mdash; No source field &mdash;</td>
                     <td className="fname">{n.toUpperCase()}</td>
+                    <td><StatusPill confidence={null} /></td>
                     <td><ConfidenceBadge pct={null} /></td>
-                    <td><StatusPill status="unmatched" /></td>
                     <td className="match-reason">No source field scored high enough confidence to suggest a match to this field.</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

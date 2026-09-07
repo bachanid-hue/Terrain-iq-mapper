@@ -502,7 +502,7 @@
     padding:22px; margin-bottom:26px;
   }
   .map-arrow{ display:flex; align-items:center; justify-content:center; color:var(--brass); padding-bottom:10px; }
-  .map-cta{ margin-top:20px; display:flex; justify-content:flex-end; }
+  .map-cta{ margin-top:20px; display:flex; justify-content:flex-start; padding-left:22px; }
 
   .field-preview-panels{
     display:grid; grid-template-columns:1fr 1fr; gap:16px;
@@ -549,14 +549,11 @@
   .confidence-badge{ display:inline-flex; align-items:center; gap:8px; }
   .conf-num{ font-family:var(--font-mono); font-size:12px; font-weight:600; }
   .badge-none{ font-family:var(--font-mono); color:var(--text-faint); font-size:12px; }
-  .status-pill{
-    font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em;
-    padding:2px 8px; border-radius:10px; border:1px solid var(--line);
+  .status-pill2{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:var(--font-mono); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    padding:3px 10px 3px 4px; border-radius:14px; border:1px solid;
   }
-  .status-pill.auto{ color:var(--teal); border-color:#B9E6E0; }
-  .status-pill.manual{ color:var(--brass-bright); border-color:#B9CDF0; }
-  .status-pill.ai{ color:var(--violet); border-color:#D6CFF3; }
-  .status-pill.unmatched{ color:var(--text-faint); }
 
   .unmapped-box{
     border:1px solid var(--line-soft); border-radius:6px; padding:18px 20px; margin-top:6px;
