@@ -537,7 +537,13 @@
   .stat{ flex:1; padding:16px 20px; border-right:1px solid var(--line-soft); }
   .stat:last-child{ border-right:none; }
   .stat .s-num{ font-family:var(--font-display); font-size:26px; font-weight:600; color:var(--brass-bright); }
+  .stat .s-pct{ font-family:var(--font-mono); font-size:13px; font-weight:500; color:var(--text-faint); }
   .stat .s-lbl{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+  .stat-link{ cursor:pointer; transition:background .15s ease; }
+  .stat-link:hover{ background:var(--ink-3); }
+  .stat-link:hover .s-lbl{ text-decoration:underline; color:var(--brass-bright); }
+  .stat-active{ background:var(--ink-3); }
+  .stat-active .s-lbl{ color:var(--brass-bright); }
 
   .mapping-table th{
     text-align:left; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase;

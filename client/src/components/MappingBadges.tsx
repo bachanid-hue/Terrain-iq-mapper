@@ -32,9 +32,9 @@ export function ConfidenceBadge({ pct }: { pct: number | null }) {
 
 // Driven purely by confidence, not the raw auto/manual/ai/unmatched status —
 // 100% = Matched (green, 3 rings), any partial match = Matched (yellow, 2
-// rings), no match = Unmatched (red, 1 ring), same ring pattern the
-// Confidence badge uses for its low tier.
-export function StatusPill({ confidence }: { confidence: number | null }) {
+// rings), no match = Unmatched (red, 1 ring). notInScope overrides all of
+// that with its own neutral gray look (0 rings — not a match quality at all).
+export function StatusPill({ confidence, notInScope }: { confidence: number | null; notInScope?: boolean }) {
   const value = confidence ?? 0;
 
   let label: string;
@@ -43,7 +43,13 @@ export function StatusPill({ confidence }: { confidence: number | null }) {
   let border: string;
   let ringCount: number;
 
-  if (value === 100) {
+  if (notInScope) {
+    label = 'Not In Scope';
+    color = 'var(--text-dim)';
+    bg = '#EDEFF3';
+    border = '#D6DAE1';
+    ringCount = 0;
+  } else if (value === 100) {
     label = 'Matched';
     color = 'var(--green)';
     bg = '#E3F7EA';

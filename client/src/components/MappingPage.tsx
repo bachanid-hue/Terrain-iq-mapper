@@ -4,7 +4,7 @@ import { fieldScore } from '../../../shared/matching';
 import { api } from '../lib/api';
 import { exportMappingToExcel } from '../lib/exportMapping';
 import ConfirmDialog from './ConfirmDialog';
-import { ConfidenceBadge, StatusPill } from './MappingBadges';
+import { StatusPill } from './MappingBadges';
 import SavedMappingModal from './SavedMappingModal';
 
 function FieldColumn({ collection, roleLabel }: { collection: Collection | undefined; roleLabel: string }) {
@@ -55,6 +55,11 @@ export default function MappingPage({
   // rows, field name for the unmapped-target rows below them), storing only
   // overrides. Defaults to checked whenever a row's status is Matched.
   const [accepted, setAccepted] = useState<Record<string, boolean>>({});
+  // Which metric is currently filtering the grid — 'all' shows everything.
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Matched' | 'Unmatched' | 'Not In Scope'>('all');
+  // Manual source-field assignment for the "no source field" trailing rows —
+  // keyed by destination field name, since those rows aren't part of `rows`.
+  const [unmappedSourceChoice, setUnmappedSourceChoice] = useState<Record<string, string>>({});
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [askingIndex, setAskingIndex] = useState<number | null>(null);
@@ -78,7 +83,22 @@ export default function MappingPage({
   const bothChosen = sourceId !== '' && targetId !== '';
   const sameCollection = bothChosen && sourceId === targetId;
 
-  const matchedCount = rows ? rows.filter((r) => r.targetField).length : 0;
+  const notInScopeCount = rows ? rows.filter((r) => r.sourceField === 'Not In Scope').length : 0;
+  const matchedCount = rows ? rows.filter((r) => r.targetField && r.sourceField !== 'Not In Scope').length : 0;
+  const totalFields = source ? source.fields.length : 0;
+  const unmatchedCount = totalFields - matchedCount - notInScopeCount;
+  const matchedPct = totalFields > 0 ? Math.round((matchedCount / totalFields) * 100) : 0;
+  // Not In Scope's percentage isn't displayed anywhere, but we still need it
+  // rounded here so Unmatched can be derived as "whatever's left" rather
+  // than rounded independently — that's what guarantees Matched% + Unmatched%
+  // always sum to exactly 100% (minus Not In Scope's own hidden share),
+  // instead of each landing on its own rounded value and occasionally
+  // overshooting 100% together (e.g. 87.5% and 12.5% both rounding up).
+  const notInScopePctInternal = totalFields > 0 ? Math.round((notInScopeCount / totalFields) * 100) : 0;
+  const unmatchedPct = totalFields > 0 ? Math.max(0, 100 - matchedPct - notInScopePctInternal) : 0;
+  // "Completed" work is anything resolved one way or another — matched or
+  // deliberately excluded — as opposed to Unmatched, which is still pending.
+  const pctCompleted = totalFields > 0 ? Math.round(((matchedCount + notInScopeCount) / totalFields) * 100) : 0;
   const avgConf = useMemo(() => {
     if (!rows) return 0;
     const matched = rows.filter((r) => r.targetField);
@@ -159,6 +179,8 @@ export default function MappingPage({
       const result = await api.runMapping(sourceId, targetId);
       setRows(result.rows);
       setAccepted({});
+      setStatusFilter('all');
+      setUnmappedSourceChoice({});
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to run matching.');
     } finally {
@@ -168,14 +190,63 @@ export default function MappingPage({
 
   // A row is "Matched" (per the Status pill) whenever it has any confidence
   // above 0 — same rule used there, so Accepted defaults to match it.
-  function defaultAccepted(confidence: number | null): boolean {
-    return (confidence ?? 0) > 0;
+  function defaultAccepted(_confidence: number | null): boolean {
+    return false;
   }
   function isAccepted(key: string, defaultVal: boolean): boolean {
     return key in accepted ? accepted[key] : defaultVal;
   }
   function toggleAccepted(key: string, defaultVal: boolean) {
     setAccepted((prev) => ({ ...prev, [key]: !isAccepted(key, defaultVal) }));
+  }
+
+  const acceptedKeys = rows
+    ? [
+        ...rows.flatMap((r, i) => (r.sourceField ? [`row-${i}`] : [])),
+        ...unmappedTargets.filter((n) => unmappedChosenSource(n)).map((n) => `unmapped-${n}`),
+      ]
+    : [];
+  const allAcceptedChecked = acceptedKeys.length > 0 && acceptedKeys.every((key) => isAccepted(key, false));
+  const acceptedCount = acceptedKeys.filter((key) => isAccepted(key, false)).length;
+  const acceptedPct = acceptedKeys.length > 0 ? Math.round((acceptedCount / acceptedKeys.length) * 100) : 0;
+
+  function toggleAllAccepted() {
+    const next = !allAcceptedChecked;
+    setAccepted((prev) => {
+      const updated = { ...prev };
+      acceptedKeys.forEach((key) => {
+        updated[key] = next;
+      });
+      return updated;
+    });
+  }
+
+  // Mirrors exactly what the Status pill displays, so clicking a metric
+  // filters to precisely the rows showing that pill.
+  function rowStatusLabel(r: MappingRow): 'Matched' | 'Unmatched' | 'Not In Scope' {
+    if (r.sourceField === 'Not In Scope') return 'Not In Scope';
+    if (r.targetField) return 'Matched';
+    return 'Unmatched';
+  }
+
+  function unmappedChosenSource(destinationField: string): string {
+    return unmappedSourceChoice[destinationField] ?? '';
+  }
+  function updateUnmappedSource(destinationField: string, value: string) {
+    setUnmappedSourceChoice((prev) => ({ ...prev, [destinationField]: value }));
+    if (!value) {
+      setAccepted((prev) => ({ ...prev, [`unmapped-${destinationField}`]: false }));
+    }
+  }
+  function unmappedRowStatusLabel(destinationField: string): 'Matched' | 'Unmatched' | 'Not In Scope' {
+    const chosen = unmappedChosenSource(destinationField);
+    if (chosen === 'Not In Scope') return 'Not In Scope';
+    if (chosen) return 'Matched';
+    return 'Unmatched';
+  }
+
+  function toggleStatusFilter(status: 'Matched' | 'Unmatched' | 'Not In Scope') {
+    setStatusFilter((prev) => (prev === status ? 'all' : status));
   }
 
   function updateRowTarget(idx: number, newTargetName: string) {
@@ -206,6 +277,13 @@ export default function MappingPage({
       row.confidence = null;
       row.status = 'unmatched';
       row.reason = 'Cleared by you — no source field is currently selected.';
+      setAccepted((prev) => ({ ...prev, [`row-${idx}`]: false }));
+    } else if (newSourceName === 'Not In Scope') {
+      row.sourceField = 'Not In Scope';
+      row.targetField = '';
+      row.confidence = null;
+      row.status = 'unmatched';
+      row.reason = 'Marked as Not In Scope by you.';
     } else {
       row.sourceField = newSourceName;
       if (row.targetField) {
@@ -355,10 +433,36 @@ export default function MappingPage({
       {rows && source && target && (
         <>
           <div className="stat-strip">
-            <div className="stat"><div className="s-num">{source.fields.length}</div><div className="s-lbl">Source Fields</div></div>
-            <div className="stat"><div className="s-num">{matchedCount}</div><div className="s-lbl">Matched</div></div>
-            <div className="stat"><div className="s-num">{source.fields.length - matchedCount}</div><div className="s-lbl">Unmatched</div></div>
-            <div className="stat"><div className="s-num">{avgConf}%</div><div className="s-lbl">Avg. Confidence</div></div>
+            <div
+              className={`stat stat-link ${statusFilter === 'all' ? 'stat-active' : ''}`}
+              onClick={() => setStatusFilter('all')}
+            >
+              <div className="s-num">{target.fields.length}</div><div className="s-lbl">Destination Fields</div>
+            </div>
+            <div
+              className={`stat stat-link ${statusFilter === 'Matched' ? 'stat-active' : ''}`}
+              onClick={() => toggleStatusFilter('Matched')}
+            >
+              <div className="s-num">{matchedCount} <span className="s-pct">({matchedPct}%)</span></div><div className="s-lbl">Matched</div>
+            </div>
+            <div
+              className={`stat stat-link ${statusFilter === 'Unmatched' ? 'stat-active' : ''}`}
+              onClick={() => toggleStatusFilter('Unmatched')}
+            >
+              <div className="s-num">{unmatchedCount} <span className="s-pct">({unmatchedPct}%)</span></div><div className="s-lbl">Unmatched</div>
+            </div>
+            <div
+              className={`stat stat-link ${statusFilter === 'Not In Scope' ? 'stat-active' : ''}`}
+              onClick={() => toggleStatusFilter('Not In Scope')}
+            >
+              <div className="s-num">{notInScopeCount}</div><div className="s-lbl">Not In Scope</div>
+            </div>
+            <div className="stat">
+              <div className="s-num">{acceptedCount} <span className="s-pct">({acceptedPct}%)</span></div><div className="s-lbl">Accepted</div>
+            </div>
+            <div className="stat">
+              <div className="s-num">{pctCompleted}%</div><div className="s-lbl">% Completed</div>
+            </div>
           </div>
           <div className="toolbar" style={{ justifyContent: 'flex-end' }}>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -396,11 +500,25 @@ export default function MappingPage({
           <div className="mapping-table">
             <table>
               <thead>
-                <tr><th>Accepted</th><th>{source.name}</th><th>{target.name}</th><th>Status</th><th>Confidence</th><th>Why</th></tr>
+                <tr>
+                  <th>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="checkbox"
+                        checked={allAcceptedChecked}
+                        onChange={toggleAllAccepted}
+                        aria-label="Accept or unaccept all rows"
+                      />
+                      Accepted
+                    </span>
+                  </th>
+                  <th><span style={{ fontWeight: 800 }}>(Source)</span> {source.name}</th><th><span style={{ fontWeight: 800 }}>(Destination)</span> {target.name}</th><th>Status</th><th>Why</th>
+                </tr>
               </thead>
               <tbody>
                 {rows.map((r, i) => {
-                  const isLowConfidence = r.status !== 'ai' && (r.status === 'unmatched' || (r.confidence !== null && r.confidence < 70));
+                  if (statusFilter !== 'all' && rowStatusLabel(r) !== statusFilter) return null;
+                  const isLowConfidence = r.sourceField !== 'Not In Scope' && r.status !== 'ai' && (r.status === 'unmatched' || (r.confidence !== null && r.confidence < 70));
                   const acceptedKey = `row-${i}`;
                   const acceptedDefault = defaultAccepted(r.confidence);
                   return (
@@ -410,6 +528,8 @@ export default function MappingPage({
                         type="checkbox"
                         checked={isAccepted(acceptedKey, acceptedDefault)}
                         onChange={() => toggleAccepted(acceptedKey, acceptedDefault)}
+                        disabled={!r.sourceField}
+                        title={!r.sourceField ? 'Select a source field or mark Not In Scope before accepting' : undefined}
                         aria-label={`Accept mapping for ${r.sourceField || 'this row'}`}
                       />
                     </td>
@@ -420,6 +540,7 @@ export default function MappingPage({
                         onChange={(e) => updateRowSource(i, e.target.value)}
                       >
                         <option value="">&mdash; No match &mdash;</option>
+                        <option value="Not In Scope">&mdash; Not In Scope &mdash;</option>
                         {source.fields.map((sf) => (
                           <option key={sf.name} value={sf.name}>{sf.name.toUpperCase()}</option>
                         ))}
@@ -428,8 +549,7 @@ export default function MappingPage({
                     <td className={r.targetField ? 'fname' : 'fdim'}>
                       {r.targetField ? r.targetField.toUpperCase() : '\u2014 No match \u2014'}
                     </td>
-                    <td><StatusPill confidence={r.confidence} /></td>
-                    <td><ConfidenceBadge pct={r.confidence} /></td>
+                    <td><StatusPill confidence={r.confidence} notInScope={r.sourceField === 'Not In Scope'} /></td>
                     <td className="match-reason">
                       {r.reason}
                       {isLowConfidence && (
@@ -448,7 +568,17 @@ export default function MappingPage({
                   );
                 })}
                 {unmappedTargets.map((n) => {
+                  if (statusFilter !== 'all' && unmappedRowStatusLabel(n) !== statusFilter) return null;
                   const acceptedKey = `unmapped-${n}`;
+                  const chosen = unmappedChosenSource(n);
+                  const computedConfidence =
+                    chosen && chosen !== 'Not In Scope' ? Math.round(fieldScore(chosen, n) * 100) : null;
+                  const computedReason =
+                    chosen === 'Not In Scope'
+                      ? 'Marked as Not In Scope by you.'
+                      : chosen
+                        ? 'Manually selected by you, overriding the suggested match.'
+                        : 'No source field scored high enough confidence to suggest a match to this field.';
                   return (
                   <tr key={`unmapped-${n}`}>
                     <td>
@@ -456,17 +586,39 @@ export default function MappingPage({
                         type="checkbox"
                         checked={isAccepted(acceptedKey, false)}
                         onChange={() => toggleAccepted(acceptedKey, false)}
+                        disabled={!chosen}
+                        title={!chosen ? 'Select a source field or mark Not In Scope before accepting' : undefined}
                         aria-label={`Accept ${n}`}
                       />
                     </td>
-                    <td className="fdim">&mdash; No source field &mdash;</td>
+                    <td>
+                      <select
+                        style={{ minWidth: 180 }}
+                        value={chosen}
+                        onChange={(e) => updateUnmappedSource(n, e.target.value)}
+                      >
+                        <option value="">&mdash; No match &mdash;</option>
+                        <option value="Not In Scope">&mdash; Not In Scope &mdash;</option>
+                        {source.fields.map((sf) => (
+                          <option key={sf.name} value={sf.name}>{sf.name.toUpperCase()}</option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="fname">{n.toUpperCase()}</td>
-                    <td><StatusPill confidence={null} /></td>
-                    <td><ConfidenceBadge pct={null} /></td>
-                    <td className="match-reason">No source field scored high enough confidence to suggest a match to this field.</td>
+                    <td><StatusPill confidence={computedConfidence} notInScope={chosen === 'Not In Scope'} /></td>
+                    <td className="match-reason">{computedReason}</td>
                   </tr>
                   );
                 })}
+                {statusFilter !== 'all' &&
+                  !rows.some((r) => rowStatusLabel(r) === statusFilter) &&
+                  !unmappedTargets.some((n) => unmappedRowStatusLabel(n) === statusFilter) && (
+                    <tr>
+                      <td colSpan={5} className="fdim" style={{ textAlign: 'center', padding: '24px 16px' }}>
+                        No fields match the "{statusFilter}" filter.
+                      </td>
+                    </tr>
+                  )}
               </tbody>
             </table>
           </div>
