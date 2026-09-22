@@ -6,13 +6,23 @@ function sanitizeFilename(s: string): string {
 }
 
 export function exportMappingToExcel(sourceName: string, targetName: string, rows: MappingRow[]) {
-  const data = rows.map((r) => ({
-    'Source Field': r.sourceField,
-    'Mapped Field': r.targetField || '(unmatched)',
-    'Confidence %': r.targetField ? r.confidence : '',
-    Status: r.targetField ? (r.status === 'auto' ? 'Auto-matched' : 'Manual') : 'Unmatched',
-    Notes: r.reason || '',
-  }));
+  const data = rows.map((r) => {
+    const isNotInScope = r.sourceField === 'Not In Scope';
+    const isMatched = !!r.sourceField && !isNotInScope;
+    let status: string;
+    if (isNotInScope) status = 'Not In Scope';
+    else if (!isMatched) status = 'Unmatched';
+    else if (r.status === 'auto') status = 'Auto-matched';
+    else if (r.status === 'ai') status = 'AI Suggested';
+    else status = 'Manual';
+    return {
+      'Source Field': isNotInScope ? '(not in scope)' : r.sourceField || '(unmatched)',
+      'Mapped Field': r.targetField,
+      'Confidence %': isMatched ? r.confidence : '',
+      Status: status,
+      Notes: r.reason || '',
+    };
+  });
   const ws = XLSX.utils.json_to_sheet(data);
   ws['!cols'] = [{ wch: 32 }, { wch: 32 }, { wch: 14 }, { wch: 16 }, { wch: 60 }];
   const wb = XLSX.utils.book_new();

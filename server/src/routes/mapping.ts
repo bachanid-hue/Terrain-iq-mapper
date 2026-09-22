@@ -24,7 +24,21 @@ mappingRouter.post('/run', (req, res) => {
   if (!source) return res.status(404).json({ error: 'Source collection not found.' });
   if (!target) return res.status(404).json({ error: 'Target collection not found.' });
 
-  const rows = runMatching(source.fields, target.fields);
+  // Every Destination field must always appear as a row — "No Match" on the
+  // Destination side must never happen. To guarantee that, we run the
+  // matcher with target.fields as the primary list (one row per destination
+  // field, always) and source.fields as the candidate pool, then swap the
+  // row properties back so sourceField/targetField still mean what the rest
+  // of the app expects: sourceField is the (possibly empty) source side,
+  // targetField is the destination — which is now always populated.
+  const rawRows = runMatching(target.fields, source.fields);
+  const rows: MappingRow[] = rawRows.map((r) => ({
+    sourceField: r.targetField,
+    targetField: r.sourceField,
+    confidence: r.confidence,
+    status: r.status,
+    reason: r.reason,
+  }));
   const result: MappingResult = { sourceId, targetId, rows };
   res.json(result);
 });

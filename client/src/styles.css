@@ -536,7 +536,7 @@
   .stat-strip{ display:flex; gap:0; margin-bottom:24px; border:1px solid var(--line-soft); border-radius:6px; overflow:hidden; }
   .stat{ flex:1; padding:16px 20px; border-right:1px solid var(--line-soft); }
   .stat:last-child{ border-right:none; }
-  .stat .s-num{ font-family:var(--font-display); font-size:26px; font-weight:600; color:var(--brass-bright); }
+  .stat .s-num{ font-family:var(--font-mono); font-size:24px; font-weight:700; color:var(--brass-bright); }
   .stat .s-pct{ font-family:var(--font-mono); font-size:13px; font-weight:500; color:var(--text-faint); }
   .stat .s-lbl{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
   .stat-link{ cursor:pointer; transition:background .15s ease; }

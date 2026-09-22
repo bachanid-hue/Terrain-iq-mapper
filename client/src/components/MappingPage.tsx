@@ -7,40 +7,6 @@ import ConfirmDialog from './ConfirmDialog';
 import { StatusPill } from './MappingBadges';
 import SavedMappingModal from './SavedMappingModal';
 
-function FieldColumn({ collection, roleLabel }: { collection: Collection | undefined; roleLabel: string }) {
-  if (!collection) {
-    return (
-      <div className="field-preview-col">
-        <div className="fp-head fp-head-empty"><span className="fp-role">{roleLabel}</span></div>
-        <div className="fp-empty">No collection selected yet</div>
-      </div>
-    );
-  }
-  return (
-    <div className="field-preview-col">
-      <div className="fp-head">
-        <div>
-          <span className="fp-role">{roleLabel}</span>
-          <span className="fp-title">{collection.name}</span>
-        </div>
-        <span className="fp-count">{collection.fields.length} fields</span>
-      </div>
-      <div className="fp-list">
-        {collection.fields.length ? (
-          collection.fields.map((f, i) => (
-            <div className="fp-item" key={`${f.name}-${i}`}>
-              <span className="fp-idx">{String(i + 1).padStart(2, '0')}</span>
-              <span className="fp-name">{f.name.toUpperCase()}</span>
-            </div>
-          ))
-        ) : (
-          <div className="fp-empty">No fields in this collection.</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function MappingPage({
   collections,
   onNewCollection,
@@ -57,9 +23,6 @@ export default function MappingPage({
   const [accepted, setAccepted] = useState<Record<string, boolean>>({});
   // Which metric is currently filtering the grid — 'all' shows everything.
   const [statusFilter, setStatusFilter] = useState<'all' | 'Matched' | 'Unmatched' | 'Not In Scope'>('all');
-  // Manual source-field assignment for the "no source field" trailing rows —
-  // keyed by destination field name, since those rows aren't part of `rows`.
-  const [unmappedSourceChoice, setUnmappedSourceChoice] = useState<Record<string, string>>({});
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [askingIndex, setAskingIndex] = useState<number | null>(null);
@@ -84,8 +47,12 @@ export default function MappingPage({
   const sameCollection = bothChosen && sourceId === targetId;
 
   const notInScopeCount = rows ? rows.filter((r) => r.sourceField === 'Not In Scope').length : 0;
-  const matchedCount = rows ? rows.filter((r) => r.targetField && r.sourceField !== 'Not In Scope').length : 0;
-  const totalFields = source ? source.fields.length : 0;
+  // A row counts as Matched when it has a real source field assigned — the
+  // destination side is always populated now (that's the whole point), so
+  // it can no longer be what determines match status.
+  const matchedCount = rows ? rows.filter((r) => r.sourceField && r.sourceField !== 'Not In Scope').length : 0;
+  // Every row is one Destination field, always — that's the guaranteed total.
+  const totalFields = target ? target.fields.length : 0;
   const unmatchedCount = totalFields - matchedCount - notInScopeCount;
   const matchedPct = totalFields > 0 ? Math.round((matchedCount / totalFields) * 100) : 0;
   // Not In Scope's percentage isn't displayed anywhere, but we still need it
@@ -101,28 +68,10 @@ export default function MappingPage({
   const pctCompleted = totalFields > 0 ? Math.round(((matchedCount + notInScopeCount) / totalFields) * 100) : 0;
   const avgConf = useMemo(() => {
     if (!rows) return 0;
-    const matched = rows.filter((r) => r.targetField);
+    const matched = rows.filter((r) => r.sourceField && r.sourceField !== 'Not In Scope');
     if (!matched.length) return 0;
     return Math.round(matched.reduce((s, r) => s + (r.confidence || 0), 0) / matched.length);
   }, [rows]);
-  const unmappedTargets = useMemo(() => {
-    if (!rows || !target) return [];
-    return target.fields.filter((tf) => !rows.some((r) => r.targetField === tf.name)).map((tf) => tf.name);
-  }, [rows, target]);
-
-  // Full snapshot used for export and save — includes target fields that
-  // never got matched by any source field, not just the editable source rows.
-  const fullRows = useMemo(() => {
-    if (!rows) return [];
-    const extra: MappingRow[] = unmappedTargets.map((n) => ({
-      sourceField: '',
-      targetField: n,
-      confidence: null,
-      status: 'unmatched',
-      reason: 'No source field scored high enough confidence to suggest a match to this field.',
-    }));
-    return [...rows, ...extra];
-  }, [rows, unmappedTargets]);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,7 +129,6 @@ export default function MappingPage({
       setRows(result.rows);
       setAccepted({});
       setStatusFilter('all');
-      setUnmappedSourceChoice({});
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to run matching.');
     } finally {
@@ -200,12 +148,7 @@ export default function MappingPage({
     setAccepted((prev) => ({ ...prev, [key]: !isAccepted(key, defaultVal) }));
   }
 
-  const acceptedKeys = rows
-    ? [
-        ...rows.flatMap((r, i) => (r.sourceField ? [`row-${i}`] : [])),
-        ...unmappedTargets.filter((n) => unmappedChosenSource(n)).map((n) => `unmapped-${n}`),
-      ]
-    : [];
+  const acceptedKeys = rows ? rows.flatMap((r, i) => (r.sourceField ? [`row-${i}`] : [])) : [];
   const allAcceptedChecked = acceptedKeys.length > 0 && acceptedKeys.every((key) => isAccepted(key, false));
   const acceptedCount = acceptedKeys.filter((key) => isAccepted(key, false)).length;
   const acceptedPct = acceptedKeys.length > 0 ? Math.round((acceptedCount / acceptedKeys.length) * 100) : 0;
@@ -222,26 +165,11 @@ export default function MappingPage({
   }
 
   // Mirrors exactly what the Status pill displays, so clicking a metric
-  // filters to precisely the rows showing that pill.
+  // filters to precisely the rows showing that pill. Destination is always
+  // populated now, so match status is entirely about whether Source is set.
   function rowStatusLabel(r: MappingRow): 'Matched' | 'Unmatched' | 'Not In Scope' {
     if (r.sourceField === 'Not In Scope') return 'Not In Scope';
-    if (r.targetField) return 'Matched';
-    return 'Unmatched';
-  }
-
-  function unmappedChosenSource(destinationField: string): string {
-    return unmappedSourceChoice[destinationField] ?? '';
-  }
-  function updateUnmappedSource(destinationField: string, value: string) {
-    setUnmappedSourceChoice((prev) => ({ ...prev, [destinationField]: value }));
-    if (!value) {
-      setAccepted((prev) => ({ ...prev, [`unmapped-${destinationField}`]: false }));
-    }
-  }
-  function unmappedRowStatusLabel(destinationField: string): 'Matched' | 'Unmatched' | 'Not In Scope' {
-    const chosen = unmappedChosenSource(destinationField);
-    if (chosen === 'Not In Scope') return 'Not In Scope';
-    if (chosen) return 'Matched';
+    if (r.sourceField) return 'Matched';
     return 'Unmatched';
   }
 
@@ -280,7 +208,6 @@ export default function MappingPage({
       setAccepted((prev) => ({ ...prev, [`row-${idx}`]: false }));
     } else if (newSourceName === 'Not In Scope') {
       row.sourceField = 'Not In Scope';
-      row.targetField = '';
       row.confidence = null;
       row.status = 'unmatched';
       row.reason = 'Marked as Not In Scope by you.';
@@ -297,25 +224,31 @@ export default function MappingPage({
   }
 
   async function handleAskAI(idx: number) {
-    if (!rows || !target) return;
+    if (!rows || !source) return;
     const row = rows[idx];
     setAskingIndex(idx);
     setError(null);
     try {
-      const result = await api.askAI(row.sourceField, target.fields.map((f) => f.name));
+      // The destination is this row's fixed identity now, so we ask the
+      // opposite direction from before: given this destination field name,
+      // which source field is the best conceptual match? The endpoint
+      // itself is just comparing two field-name lists, so it works the same
+      // either way — only the result's meaning flips (a suggested source,
+      // never a suggested destination).
+      const result = await api.askAI(row.targetField, source.fields.map((f) => f.name));
       const next = [...rows];
       if (result.targetField) {
         next[idx] = {
-          sourceField: row.sourceField,
-          targetField: result.targetField,
+          sourceField: result.targetField,
+          targetField: row.targetField,
           confidence: result.confidence,
           status: 'ai',
           reason: result.reason,
         };
       } else {
         next[idx] = {
-          sourceField: row.sourceField,
-          targetField: '',
+          sourceField: '',
+          targetField: row.targetField,
           confidence: null,
           status: 'unmatched',
           reason: result.reason,
@@ -341,7 +274,7 @@ export default function MappingPage({
         targetId: target.id,
         sourceName: source.name,
         targetName: target.name,
-        rows: fullRows,
+        rows,
         savedBy: trimmed,
       });
       setSavedMappings((prev) => [saved, ...prev]);
@@ -363,11 +296,18 @@ export default function MappingPage({
   return (
     <>
       <p className="page-eyebrow">AI Field Matching</p>
-      <h1 className="page-title">Map Collections</h1>
-      <p className="page-sub">
-        Select a source and target collection. Terrain IQ compares field names using synonym mapping, token
-        overlap, and string similarity to suggest a match &mdash; then you can adjust any pairing by hand.
-      </p>
+      <div className="row-between">
+        <div>
+          <h1 className="page-title">Map Collections</h1>
+          <p className="page-sub">
+            Select a source and target collection. Terrain IQ compares field names using synonym mapping, token
+            overlap, and string similarity to suggest a match &mdash; then you can adjust any pairing by hand.
+          </p>
+        </div>
+        <button className="btn btn-primary" disabled={!bothChosen || sameCollection || running} onClick={runMatch}>
+          {running ? 'Mapping…' : 'New Mapping'}
+        </button>
+      </div>
 
       <div className="map-selectors">
         <div>
@@ -408,11 +348,6 @@ export default function MappingPage({
           </select>
         </div>
       </div>
-      <div className="map-cta">
-        <button className="btn btn-primary" disabled={!bothChosen || sameCollection || running} onClick={runMatch}>
-          {running ? 'Mapping…' : 'Map Collections'}
-        </button>
-      </div>
       <div style={{ textAlign: 'right' }}>
         {error && <p className="error-text">{error}</p>}
         {sameCollection && !error && (
@@ -420,15 +355,58 @@ export default function MappingPage({
         )}
       </div>
 
-      {(sourceId || targetId) && (
-        <>
-          <p className="page-eyebrow" style={{ marginTop: 4 }}>Field Listings</p>
-          <div className="field-preview-panels">
-            <FieldColumn collection={source} roleLabel="Source" />
-            <FieldColumn collection={target} roleLabel="Destination" />
+      <div style={{ marginTop: 36 }}>
+        <div className="toolbar">
+          <p className="page-eyebrow" style={{ margin: 0 }}>Saved Mappings</p>
+        </div>
+        {loadingSaved ? (
+          <p className="page-sub">Loading saved mappings&hellip;</p>
+        ) : savedMappings.length === 0 ? (
+          <p className="page-sub">
+            No mappings have been saved yet. Run a mapping above, then click &ldquo;Save Mapping&rdquo; to keep a
+            shared record of it.
+          </p>
+        ) : (
+          <div className="field-table">
+            <table>
+              <thead>
+                <tr><th>Mapping</th><th>Saved By</th><th>Saved On</th><th>Fields</th><th></th></tr>
+              </thead>
+              <tbody>
+                {savedMappings.map((m) => {
+                  const matched = m.rows.filter((r) => r.sourceField && r.sourceField !== 'Not In Scope').length;
+                  const savedOn = new Date(m.createdAt).toLocaleDateString(undefined, {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                  });
+                  return (
+                    <tr key={m.id} className="clickable-row" onClick={() => setViewingSaved(m)}>
+                      <td className="fname">{m.sourceName} &rarr; {m.targetName}</td>
+                      <td className="fdim">{m.savedBy}</td>
+                      <td className="fdim">{savedOn}</td>
+                      <td className="fdim">{matched}/{m.rows.length} matched</td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={(e) => { e.stopPropagation(); exportMappingToExcel(m.sourceName, m.targetName, m.rows); }}
+                        >
+                          Export
+                        </button>{' '}
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: 'var(--rose)' }}
+                          onClick={(e) => { e.stopPropagation(); setPendingDeleteSaved(m); }}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </>
-      )}
+        )}
+      </div>
 
       {rows && source && target && (
         <>
@@ -461,12 +439,12 @@ export default function MappingPage({
               <div className="s-num">{acceptedCount} <span className="s-pct">({acceptedPct}%)</span></div><div className="s-lbl">Accepted</div>
             </div>
             <div className="stat">
-              <div className="s-num">{pctCompleted}%</div><div className="s-lbl">% Completed</div>
+              <div className="s-num">{pctCompleted}%</div><div className="s-lbl">Completed</div>
             </div>
           </div>
           <div className="toolbar" style={{ justifyContent: 'flex-end' }}>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => exportMappingToExcel(source.name, target.name, fullRows)}>
+              <button className="btn btn-ghost btn-sm" onClick={() => exportMappingToExcel(source.name, target.name, rows)}>
                 Export Mapping (.xlsx)
               </button>
               <button className="btn btn-primary btn-sm" onClick={() => { setSavingOpen(true); setSaveStatus(null); }}>
@@ -522,7 +500,7 @@ export default function MappingPage({
                   const acceptedKey = `row-${i}`;
                   const acceptedDefault = defaultAccepted(r.confidence);
                   return (
-                  <tr key={`${r.sourceField}-${i}`}>
+                  <tr key={`${r.targetField}-${i}`}>
                     <td>
                       <input
                         type="checkbox"
@@ -539,16 +517,14 @@ export default function MappingPage({
                         value={r.sourceField}
                         onChange={(e) => updateRowSource(i, e.target.value)}
                       >
-                        <option value="">&mdash; No match &mdash;</option>
+                        <option value="" disabled hidden>&mdash; No match &mdash;</option>
                         <option value="Not In Scope">&mdash; Not In Scope &mdash;</option>
                         {source.fields.map((sf) => (
                           <option key={sf.name} value={sf.name}>{sf.name.toUpperCase()}</option>
                         ))}
                       </select>
                     </td>
-                    <td className={r.targetField ? 'fname' : 'fdim'}>
-                      {r.targetField ? r.targetField.toUpperCase() : '\u2014 No match \u2014'}
-                    </td>
+                    <td className="fname">{r.targetField.toUpperCase()}</td>
                     <td><StatusPill confidence={r.confidence} notInScope={r.sourceField === 'Not In Scope'} /></td>
                     <td className="match-reason">
                       {r.reason}
@@ -567,116 +543,18 @@ export default function MappingPage({
                   </tr>
                   );
                 })}
-                {unmappedTargets.map((n) => {
-                  if (statusFilter !== 'all' && unmappedRowStatusLabel(n) !== statusFilter) return null;
-                  const acceptedKey = `unmapped-${n}`;
-                  const chosen = unmappedChosenSource(n);
-                  const computedConfidence =
-                    chosen && chosen !== 'Not In Scope' ? Math.round(fieldScore(chosen, n) * 100) : null;
-                  const computedReason =
-                    chosen === 'Not In Scope'
-                      ? 'Marked as Not In Scope by you.'
-                      : chosen
-                        ? 'Manually selected by you, overriding the suggested match.'
-                        : 'No source field scored high enough confidence to suggest a match to this field.';
-                  return (
-                  <tr key={`unmapped-${n}`}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={isAccepted(acceptedKey, false)}
-                        onChange={() => toggleAccepted(acceptedKey, false)}
-                        disabled={!chosen}
-                        title={!chosen ? 'Select a source field or mark Not In Scope before accepting' : undefined}
-                        aria-label={`Accept ${n}`}
-                      />
+                {statusFilter !== 'all' && !rows.some((r) => rowStatusLabel(r) === statusFilter) && (
+                  <tr>
+                    <td colSpan={5} className="fdim" style={{ textAlign: 'center', padding: '24px 16px' }}>
+                      No fields match the "{statusFilter}" filter.
                     </td>
-                    <td>
-                      <select
-                        style={{ minWidth: 180 }}
-                        value={chosen}
-                        onChange={(e) => updateUnmappedSource(n, e.target.value)}
-                      >
-                        <option value="">&mdash; No match &mdash;</option>
-                        <option value="Not In Scope">&mdash; Not In Scope &mdash;</option>
-                        {source.fields.map((sf) => (
-                          <option key={sf.name} value={sf.name}>{sf.name.toUpperCase()}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="fname">{n.toUpperCase()}</td>
-                    <td><StatusPill confidence={computedConfidence} notInScope={chosen === 'Not In Scope'} /></td>
-                    <td className="match-reason">{computedReason}</td>
                   </tr>
-                  );
-                })}
-                {statusFilter !== 'all' &&
-                  !rows.some((r) => rowStatusLabel(r) === statusFilter) &&
-                  !unmappedTargets.some((n) => unmappedRowStatusLabel(n) === statusFilter) && (
-                    <tr>
-                      <td colSpan={5} className="fdim" style={{ textAlign: 'center', padding: '24px 16px' }}>
-                        No fields match the "{statusFilter}" filter.
-                      </td>
-                    </tr>
-                  )}
+                )}
               </tbody>
             </table>
           </div>
         </>
       )}
-
-      <div style={{ marginTop: 56 }}>
-        <div className="toolbar">
-          <p className="page-eyebrow" style={{ margin: 0 }}>Saved Mappings</p>
-        </div>
-        {loadingSaved ? (
-          <p className="page-sub">Loading saved mappings&hellip;</p>
-        ) : savedMappings.length === 0 ? (
-          <p className="page-sub">
-            No mappings have been saved yet. Run a mapping above, then click &ldquo;Save Mapping&rdquo; to keep a
-            shared record of it.
-          </p>
-        ) : (
-          <div className="field-table">
-            <table>
-              <thead>
-                <tr><th>Mapping</th><th>Saved By</th><th>Saved On</th><th>Fields</th><th></th></tr>
-              </thead>
-              <tbody>
-                {savedMappings.map((m) => {
-                  const matched = m.rows.filter((r) => r.targetField).length;
-                  const savedOn = new Date(m.createdAt).toLocaleDateString(undefined, {
-                    year: 'numeric', month: 'short', day: 'numeric',
-                  });
-                  return (
-                    <tr key={m.id} className="clickable-row" onClick={() => setViewingSaved(m)}>
-                      <td className="fname">{m.sourceName} &rarr; {m.targetName}</td>
-                      <td className="fdim">{m.savedBy}</td>
-                      <td className="fdim">{savedOn}</td>
-                      <td className="fdim">{matched}/{m.rows.length} matched</td>
-                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={(e) => { e.stopPropagation(); exportMappingToExcel(m.sourceName, m.targetName, m.rows); }}
-                        >
-                          Export
-                        </button>{' '}
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          style={{ color: 'var(--rose)' }}
-                          onClick={(e) => { e.stopPropagation(); setPendingDeleteSaved(m); }}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
 
       {pendingDeleteSaved && (
         <ConfirmDialog

@@ -18,10 +18,12 @@ export default function SavedMappingModal({
 }) {
   const [query, setQuery] = useState('');
 
-  const matched = mapping.rows.filter((r) => r.targetField).length;
+  const matched = mapping.rows.filter((r) => r.sourceField && r.sourceField !== 'Not In Scope').length;
   const avgConf = matched
     ? Math.round(
-        mapping.rows.filter((r) => r.targetField).reduce((s, r) => s + (r.confidence || 0), 0) / matched
+        mapping.rows
+          .filter((r) => r.sourceField && r.sourceField !== 'Not In Scope')
+          .reduce((s, r) => s + (r.confidence || 0), 0) / matched
       )
     : 0;
   const savedOn = new Date(mapping.createdAt).toLocaleDateString(undefined, {
