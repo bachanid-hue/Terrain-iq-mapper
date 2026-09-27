@@ -202,6 +202,10 @@
     padding:0 2px;
   }
   .search-box-clear:hover{ color:var(--rose); }
+  .collections-top-bar{
+    display:flex; align-items:center; gap:16px;
+    margin:24px 0 30px;
+  }
 
   /* Collection cards */
   .grid{
@@ -438,6 +442,24 @@
   .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:26px; }
   .error-text{ color:var(--rose); font-size:12px; margin-top:8px; }
   .field-hint{ color:var(--text-faint); font-size:11.5px; margin-top:6px; font-style:italic; }
+
+  /* Collection Details box on New Collection — matches the reference design:
+     accent bar + divider header, blue field labels, filled input backgrounds. */
+  .cdb-header{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .cdb-accent{ width:4px; height:20px; background:var(--brass); border-radius:2px; flex:none; }
+  .cdb-title{ font-family:var(--font-display); font-weight:600; font-size:18px; margin:0; color:var(--text); }
+  .cdb-divider{ height:2px; background:var(--brass); margin-bottom:28px; }
+  .cd-box .field-label{ color:var(--brass-bright); }
+  .cd-box .field-hint{ font-style:normal; }
+  .cd-box .details-grid input[type=text],
+  .cd-box .details-grid select{
+    max-width:none;
+    background:#E8EEFB; border:1px solid #D2E0F7;
+  }
+  .cd-box .details-grid input[type=text]:focus,
+  .cd-box .details-grid select:focus{
+    border-color:var(--brass); box-shadow:0 0 0 2px rgba(30,103,213,0.14);
+  }
   .success-text{ color:var(--teal); font-size:12px; margin-top:8px; font-weight:600; }
 
   .save-mapping-form{
@@ -579,6 +601,7 @@
     .field-preview-panels{ grid-template-columns:1fr; }
     .details-grid{ grid-template-columns:1fr; }
     .details-grid input[type=text], .details-grid select{ max-width:none; }
+    .collections-top-bar{ flex-direction:column; align-items:stretch; }
   }
 
 /* ============================= HOME / MARKETING PAGE ============================= */

@@ -10,66 +10,6 @@ function dash(v: string | undefined | null): string {
   return v && v.trim() ? v : '\u2014';
 }
 
-function CollectionCard({
-  c,
-  onOpen,
-  onRequestDelete,
-}: {
-  c: Collection;
-  onOpen: () => void;
-  onRequestDelete: () => void;
-}) {
-  const statusKey = (c.status || '').toLowerCase();
-
-  return (
-    <div className="cc-card" onClick={onOpen}>
-      <div
-        className="card-del"
-        title="Delete collection"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRequestDelete();
-        }}
-      >
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-          <path
-            d="M2 4h12M6 4V2.5A1 1 0 017 1.5h2a1 1 0 011 1V4M12.5 4l-.6 9a1 1 0 01-1 .9H5.1a1 1 0 01-1-.9L3.5 4"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
-
-      <div className="cc-header">
-        <div className="cc-title">
-          <span className="cc-accent" />
-          <h3 className="cc-name">{c.name}</h3>
-        </div>
-        {c.status && (
-          <span className={`cc-status cc-status-${statusKey}`}>{c.status.toUpperCase()}</span>
-        )}
-      </div>
-
-      <div className="cc-grid">
-        <div className="cc-col">
-          <div className="cc-row"><span className="cc-label">Field Count</span><span className="cc-value">{c.fields.length}</span></div>
-          <div className="cc-row"><span className="cc-label">Category</span><span className="cc-value">{dash(c.type)}</span></div>
-          <div className="cc-row"><span className="cc-label">Source System</span><span className="cc-value">{dash(c.source)}</span></div>
-          <div className="cc-row"><span className="cc-label">Source Type</span><span className="cc-value">{dash(c.clientType)}</span></div>
-          <div className="cc-row"><span className="cc-label">Source File</span><span className="cc-value cc-file">{dash(c.fileName)}</span></div>
-        </div>
-        <div className="cc-col">
-          <div className="cc-row"><span className="cc-label">Created On</span><span className="cc-value">{formatDate(c.createdAt)}</span></div>
-          <div className="cc-row"><span className="cc-label">Created By</span><span className="cc-value">{dash(c.createdBy)}</span></div>
-          <div className="cc-row"><span className="cc-label">Edited On</span><span className="cc-value">{c.editedAt ? formatDate(c.editedAt) : '\u2014'}</span></div>
-          <div className="cc-row"><span className="cc-label">Edited By</span><span className="cc-value">{dash(c.editedBy)}</span></div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Dashboard({
   collections,
   loading,
@@ -92,7 +32,7 @@ export default function Dashboard({
     const q = query.trim().toLowerCase();
     if (!q) return collections;
     return collections.filter((c) => {
-      const haystack = [c.name, c.type, c.createdBy, formatDate(c.createdAt), c.fileName]
+      const haystack = [c.name, c.type, c.status, c.createdBy, formatDate(c.createdAt), c.fileName]
         .join(' ')
         .toLowerCase();
       return haystack.includes(q);
@@ -101,36 +41,26 @@ export default function Dashboard({
 
   return (
     <>
-      <p className="page-eyebrow">Data Dictionaries</p>
-      <div className="row-between">
-        <div>
-          <h1 className="page-title">Collections</h1>
-          <p className="page-sub">
-            Every data source starts as a collection: a name, a type, and the field listing that defines it.
-            Collections are stored centrally, so everyone using this site sees the same set. Map any two to
-            chart the terrain between them.
-          </p>
-        </div>
-        {collections.length > 0 && (
-          <button className="btn btn-primary" onClick={onNewCollection}>+ New Collection</button>
-        )}
-      </div>
+      <h1 className="page-title">Collections</h1>
 
       {collections.length > 0 && (
-        <div className="search-box">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.6" />
-            <path d="M12.5 12.5L16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search collections by name, type, creator, date, or file..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          {query && (
-            <span className="search-box-clear" onClick={() => setQuery('')} title="Clear search">&times;</span>
-          )}
+        <div className="collections-top-bar">
+          <div className="search-box" style={{ flex: 1, margin: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M12.5 12.5L16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search collections by name, type, status, creator, date, or file..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {query && (
+              <span className="search-box-clear" onClick={() => setQuery('')} title="Clear search">&times;</span>
+            )}
+          </div>
+          <button className="btn btn-primary" onClick={onNewCollection}>+ New Collection</button>
         </div>
       )}
 
@@ -156,21 +86,59 @@ export default function Dashboard({
         <div className="empty-state">
           <div className="em-title">No collections match "{query}"</div>
           <p style={{ maxWidth: 340, margin: '0 auto 18px', fontSize: 13 }}>
-            Try a different name, type, creator, date, or file name.
+            Try a different name, type, status, creator, date, or file name.
           </p>
           <button className="btn btn-ghost btn-sm" onClick={() => setQuery('')}>Clear search</button>
         </div>
       ) : (
-        <div className="grid cc-grid-wrap">
-          {filtered.map((c) => (
-            <CollectionCard
-              key={c.id}
-              c={c}
-              onOpen={() => onOpenCollection(c.id)}
-              onRequestDelete={() => setPendingDelete(c)}
-            />
-          ))}
-        </div>
+        <>
+          <p className="page-eyebrow" style={{ marginBottom: 10 }}>Collections</p>
+          <div className="field-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Collection Name</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>Fields</th>
+                  <th>Created By</th>
+                  <th>Created On</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((c) => {
+                  const statusKey = (c.status || '').toLowerCase();
+                  return (
+                    <tr key={c.id} className="clickable-row" onClick={() => onOpenCollection(c.id)}>
+                      <td className="fname">{c.name}</td>
+                      <td className="fdim">{dash(c.type)}</td>
+                      <td>
+                        {c.status ? (
+                          <span className={`cc-status cc-status-${statusKey}`}>{c.status.toUpperCase()}</span>
+                        ) : (
+                          <span className="fdim">&mdash;</span>
+                        )}
+                      </td>
+                      <td className="fdim">{c.fields.length}</td>
+                      <td className="fdim">{dash(c.createdBy)}</td>
+                      <td className="fdim">{formatDate(c.createdAt)}</td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: 'var(--rose)' }}
+                          onClick={(e) => { e.stopPropagation(); setPendingDelete(c); }}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {pendingDelete && (

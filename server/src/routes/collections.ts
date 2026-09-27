@@ -14,6 +14,7 @@ import type { Collection, NewCollectionInput, FieldDataType, FieldKind } from '.
 
 const VALID_CLIENT_TYPES = new Set(['Internal', 'External']);
 const VALID_STATUSES = new Set(['Draft', 'Live']);
+const VALID_FORMATS = new Set(['File', 'Database']);
 const VALID_DATA_TYPES = new Set(['Text', 'Number', 'Date']);
 const VALID_FIELD_TYPES = new Set(['Text', 'List']);
 
@@ -41,6 +42,7 @@ collectionsRouter.post('/', (req, res) => {
   const source = body.source;
   const clientType = body.clientType;
   const status = body.status;
+  const format = body.format;
   const fileName = (body.fileName || '').trim();
   const fields = Array.isArray(body.fields) ? body.fields : [];
   const createdBy = (body.createdBy || '').trim();
@@ -58,6 +60,9 @@ collectionsRouter.post('/', (req, res) => {
   if (!status || !VALID_STATUSES.has(status)) {
     return res.status(400).json({ error: 'Status must be Draft or Live.' });
   }
+  if (!format || !VALID_FORMATS.has(format)) {
+    return res.status(400).json({ error: 'Format must be File or Database.' });
+  }
   if (!fields.length) {
     return res.status(400).json({ error: 'At least one field is required.' });
   }
@@ -72,6 +77,7 @@ collectionsRouter.post('/', (req, res) => {
     source,
     clientType,
     status,
+    format,
     fileName: fileName || 'upload.xlsx',
     createdBy,
     editedBy: '',

@@ -5,8 +5,9 @@
 // their own tables — collections just reference them by name.
 export type CollectionType = string;
 export type CollectionSource = string;
-export type InternalOrExternalType = 'Internal' | 'External';
+export type InternalOrExternalType = 'Internal' | 'External'; // labeled "Source System Type" in the UI
 export type CollectionStatus = 'Draft' | 'Live';
+export type CollectionFormat = 'File' | 'Database';
 
 export type FieldDataType = 'Text' | 'Number' | 'Date';
 export type FieldKind = 'Text' | 'List';
@@ -47,8 +48,9 @@ export interface Collection {
   name: string;
   type: CollectionType; // labeled "Category" in the UI
   source: CollectionSource; // labeled "Source System" in the UI
-  clientType: InternalOrExternalType; // labeled "Type" in the UI
+  clientType: InternalOrExternalType; // labeled "Source System Type" in the UI
   status: CollectionStatus;
+  format: CollectionFormat;
   fileName: string;
   fields: Field[];
   createdBy: string;
@@ -64,6 +66,7 @@ export interface NewCollectionInput {
   source: CollectionSource;
   clientType: InternalOrExternalType;
   status: CollectionStatus;
+  format: CollectionFormat;
   fileName: string;
   fields: Field[];
   createdBy?: string;

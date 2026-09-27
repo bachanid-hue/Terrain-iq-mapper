@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Collection, CollectionType, CollectionSource, InternalOrExternalType, CollectionStatus, Field, SavedMapping, Category, SourceSystem } from '../../shared/types.js';
+import type { Collection, CollectionType, CollectionSource, InternalOrExternalType, CollectionStatus, CollectionFormat, Field, SavedMapping, Category, SourceSystem } from '../../shared/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -61,6 +61,11 @@ try {
   /* column already exists — nothing to do */
 }
 try {
+  db.exec(`ALTER TABLE collections ADD COLUMN format TEXT NOT NULL DEFAULT ''`);
+} catch {
+  /* column already exists — nothing to do */
+}
+try {
   db.exec(`ALTER TABLE collections ADD COLUMN edited_by TEXT NOT NULL DEFAULT ''`);
 } catch {
   /* column already exists — nothing to do */
@@ -115,6 +120,7 @@ interface CollectionRow {
   source: string;
   client_type: string;
   status: string;
+  format: string;
   file_name: string;
   fields: string;
   created_by: string;
@@ -131,6 +137,7 @@ function rowToCollection(row: CollectionRow): Collection {
     source: (row.source || '') as CollectionSource,
     clientType: (row.client_type || '') as InternalOrExternalType,
     status: (row.status || '') as CollectionStatus,
+    format: (row.format || '') as CollectionFormat,
     fileName: row.file_name,
     fields: JSON.parse(row.fields) as Field[],
     createdBy: row.created_by || '',
@@ -182,8 +189,8 @@ export function renameCollection(id: string, name: string, editedBy = 'Test User
 
 export function insertCollection(c: Collection): void {
   db.prepare(
-    `INSERT INTO collections (id, name, type, source, client_type, status, file_name, fields, created_by, created_at, edited_by, edited_at)
-     VALUES (@id, @name, @type, @source, @clientType, @status, @fileName, @fields, @createdBy, @createdAt, @editedBy, @editedAt)`
+    `INSERT INTO collections (id, name, type, source, client_type, status, format, file_name, fields, created_by, created_at, edited_by, edited_at)
+     VALUES (@id, @name, @type, @source, @clientType, @status, @format, @fileName, @fields, @createdBy, @createdAt, @editedBy, @editedAt)`
   ).run({
     id: c.id,
     name: c.name,
@@ -191,6 +198,7 @@ export function insertCollection(c: Collection): void {
     source: c.source,
     clientType: c.clientType,
     status: c.status,
+    format: c.format,
     fileName: c.fileName,
     fields: JSON.stringify(c.fields),
     createdBy: c.createdBy,

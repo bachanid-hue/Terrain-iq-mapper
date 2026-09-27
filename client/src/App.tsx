@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Collection, CollectionType, CollectionSource, InternalOrExternalType, CollectionStatus, Field } from '../../shared/types';
+import type { Collection, CollectionType, CollectionSource, InternalOrExternalType, CollectionStatus, CollectionFormat, Field } from '../../shared/types';
 import { api } from './lib/api';
 import Sidebar from './components/Sidebar';
 import HomePage from './components/HomePage';
@@ -7,8 +7,10 @@ import Dashboard from './components/Dashboard';
 import NewCollectionPage from './components/NewCollectionPage';
 import CollectionDetail from './components/CollectionDetail';
 import MappingPage from './components/MappingPage';
+import NewMappingPage from './components/NewMappingPage';
+import SchedulesPage from './components/SchedulesPage';
 
-export type View = 'home' | 'dashboard' | 'newCollection' | 'collectionDetail' | 'mapping';
+export type View = 'home' | 'dashboard' | 'newCollection' | 'collectionDetail' | 'mapping' | 'newMapping' | 'schedules';
 
 export default function App() {
   const [view, setView] = useState<View>('home');
@@ -45,6 +47,7 @@ export default function App() {
     source: CollectionSource;
     clientType: InternalOrExternalType;
     status: CollectionStatus;
+    format: CollectionFormat;
     fileName: string;
     fields: Field[];
     createdBy: string;
@@ -98,8 +101,16 @@ export default function App() {
           />
         )}
         {view === 'mapping' && (
-          <MappingPage collections={collections} onNewCollection={() => navigate('newCollection')} />
+          <MappingPage onNewMapping={() => navigate('newMapping')} />
         )}
+        {view === 'newMapping' && (
+          <NewMappingPage
+            collections={collections}
+            onNewCollection={() => navigate('newCollection')}
+            onCancel={() => navigate('mapping')}
+          />
+        )}
+        {view === 'schedules' && <SchedulesPage />}
       </main>
     </div>
   );

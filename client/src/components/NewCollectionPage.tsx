@@ -5,6 +5,7 @@ import type {
   CollectionSource,
   InternalOrExternalType,
   CollectionStatus,
+  CollectionFormat,
   Field,
   FieldDataType,
   FieldKind,
@@ -30,6 +31,7 @@ export default function NewCollectionPage({
     source: CollectionSource;
     clientType: InternalOrExternalType;
     status: CollectionStatus;
+    format: CollectionFormat;
     fileName: string;
     fields: Field[];
     createdBy: string;
@@ -40,6 +42,7 @@ export default function NewCollectionPage({
   const [source, setSource] = useState<CollectionSource | ''>('');
   const [clientType, setClientType] = useState<InternalOrExternalType | ''>('');
   const [status, setStatus] = useState<CollectionStatus | ''>('');
+  const [format, setFormat] = useState<CollectionFormat | ''>('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [addingCategory, setAddingCategory] = useState(false);
@@ -154,7 +157,7 @@ export default function NewCollectionPage({
     }
   }
 
-  const detailsComplete = trimmedName.length > 0 && !!type && !!source && !!clientType && !!status;
+  const detailsComplete = trimmedName.length > 0 && !!type && !!source && !!clientType && !!status && !!format;
 
   async function handleFile(file: File) {
     setError(null);
@@ -212,12 +215,13 @@ export default function NewCollectionPage({
     !!source &&
     !!clientType &&
     !!status &&
+    !!format &&
     !!fields &&
     selectedCount > 0 &&
     !saving;
 
   async function handleSave() {
-    if (!canSave || !fields || !fileName || !type || !source || !clientType || !status) return;
+    if (!canSave || !fields || !fileName || !type || !source || !clientType || !status || !format) return;
     setSaving(true);
     setError(null);
     try {
@@ -227,6 +231,7 @@ export default function NewCollectionPage({
         source,
         clientType,
         status,
+        format,
         fileName,
         fields: selectedFields,
         // No login system exists yet — every collection is attributed to a
@@ -245,6 +250,7 @@ export default function NewCollectionPage({
     setSource('');
     setClientType('');
     setStatus('');
+    setFormat('');
     setAddingCategory(false);
     setNewCategoryName('');
     setCategoryError(null);
@@ -262,22 +268,26 @@ export default function NewCollectionPage({
   return (
     <>
       <div className="back-link" onClick={onCancel}>&larr; All collections</div>
-      <p className="page-eyebrow">Data Dictionaries</p>
       <h1 className="page-title">New Collection</h1>
-      <p className="page-sub">Define a data dictionary by name, category, and source system, then upload its field listing.</p>
+      <p className="page-sub">All fields are required unless marked as optional.</p>
 
-      <div className="details-box">
-        <h2 className="details-box-title">Collection Details</h2>
+      <div className="details-box cd-box">
+        <div className="cdb-header">
+          <span className="cdb-accent" />
+          <h2 className="cdb-title">Collection Details</h2>
+        </div>
+        <div className="cdb-divider" />
 
         <div className="details-grid">
           <div className="field-group">
-            <label className="field-label">Name</label>
+            <label className="field-label">Collection Name</label>
             <input
               type="text"
               placeholder="e.g. Corebridge SMF"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
+            <p className="field-hint">A unique, descriptive name for the collection.</p>
             {isDuplicateName && (
               <p className="error-text">
                 A collection named "{trimmedName}" already exists. Choose a different name.
@@ -331,10 +341,11 @@ export default function NewCollectionPage({
                 </button>
               </div>
             )}
+            <p className="field-hint">Categorize collections for better organization.</p>
             {categoryError && <p className="error-text">{categoryError}</p>}
           </div>
 
-          <div className="field-group" style={{ marginBottom: 0 }}>
+          <div className="field-group">
             <label className="field-label">Source System</label>
             {!addingSourceSystem ? (
               <select
@@ -380,16 +391,18 @@ export default function NewCollectionPage({
                 </button>
               </div>
             )}
+            <p className="field-hint">Track the system where the collection is sourced from.</p>
             {sourceSystemError && <p className="error-text">{sourceSystemError}</p>}
           </div>
 
-          <div className="field-group" style={{ marginBottom: 0 }}>
-            <label className="field-label">Type</label>
+          <div className="field-group">
+            <label className="field-label">Source System Type</label>
             <select value={clientType} onChange={(e) => setClientType(e.target.value as InternalOrExternalType)}>
               <option value="" disabled hidden>&mdash; Select a type &mdash;</option>
               <option value="Internal">Internal</option>
               <option value="External">External</option>
             </select>
+            <p className="field-hint">Designate where the source system is managed.</p>
           </div>
 
           <div className="field-group" style={{ marginBottom: 0 }}>
@@ -399,13 +412,28 @@ export default function NewCollectionPage({
               <option value="Draft">Draft</option>
               <option value="Live">Live</option>
             </select>
+            <p className="field-hint">Differentiate between finished collections and works in progress.</p>
+          </div>
+
+          <div className="field-group" style={{ marginBottom: 0 }}>
+            <label className="field-label">Format</label>
+            <select value={format} onChange={(e) => setFormat(e.target.value as CollectionFormat)}>
+              <option value="" disabled hidden>&mdash; Select a format &mdash;</option>
+              <option value="File">File</option>
+              <option value="Database">Database</option>
+            </select>
+            <p className="field-hint">Identify type of source for a collection.</p>
           </div>
         </div>
       </div>
 
       {detailsComplete && (
-        <div className="details-box">
-          <h2 className="details-box-title">Upload Collection</h2>
+        <div className="details-box cd-box">
+          <div className="cdb-header">
+            <span className="cdb-accent" />
+            <h2 className="cdb-title">Upload Collection</h2>
+          </div>
+          <div className="cdb-divider" />
 
           {!fields ? (
             <div
@@ -455,11 +483,15 @@ export default function NewCollectionPage({
       )}
 
       {detailsComplete && fields && (
-        <div className="details-box">
-          <div className="toolbar" style={{ marginBottom: 8, alignItems: 'baseline' }}>
-            <h2 className="details-box-title" style={{ margin: 0 }}>Collection Fields</h2>
+        <div className="details-box cd-box">
+          <div className="toolbar" style={{ marginBottom: 16, alignItems: 'center' }}>
+            <div className="cdb-header" style={{ marginBottom: 0 }}>
+              <span className="cdb-accent" />
+              <h2 className="cdb-title">Collection Fields</h2>
+            </div>
             <span className="fdim" style={{ fontSize: 12 }}>{selectedCount} of {fields.length} selected</span>
           </div>
+          <div className="cdb-divider" />
           <div style={{ maxHeight: 420, overflowY: 'auto', overflowX: 'auto' }} className="field-table">
             <table>
               <thead>
@@ -530,7 +562,7 @@ export default function NewCollectionPage({
 
       <div className="modal-actions" style={{ justifyContent: 'flex-start' }}>
         <button className="btn btn-primary" disabled={!canSave} onClick={handleSave}>
-          {saving ? 'Saving…' : 'Save Collection'}
+          {saving ? 'Saving…' : 'Create Collection'}
         </button>
         <button className="btn btn-ghost" onClick={resetForm}>Cancel</button>
       </div>

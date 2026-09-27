@@ -46,13 +46,20 @@ export default function Sidebar({
           Collections
           <span className="nav-count">{collectionCount}</span>
         </div>
-        <div className={`nav-item ${view === 'mapping' ? 'active' : ''}`} onClick={() => onNavigate('mapping')}>
+        <div className={`nav-item ${view === 'mapping' || view === 'newMapping' ? 'active' : ''}`} onClick={() => onNavigate('mapping')}>
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
             <path d="M2 8c2-4 4 4 6 0s4-4 6 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             <circle cx="2" cy="8" r="1.3" fill="currentColor" />
             <circle cx="14" cy="8" r="1.3" fill="currentColor" />
           </svg>
-          Map Collections
+          Mappings
+        </div>
+        <div className={`nav-item ${view === 'schedules' ? 'active' : ''}`} onClick={() => onNavigate('schedules')}>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" />
+            <path d="M8 4.5v3.7l2.6 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Schedules
         </div>
       </nav>
       <div className="sidebar-foot">
