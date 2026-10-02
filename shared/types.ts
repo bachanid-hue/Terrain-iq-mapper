@@ -5,9 +5,8 @@
 // their own tables — collections just reference them by name.
 export type CollectionType = string;
 export type CollectionSource = string;
-export type InternalOrExternalType = 'Internal' | 'External'; // labeled "Source System Type" in the UI
 export type CollectionStatus = 'Draft' | 'Live';
-export type CollectionFormat = 'File' | 'Database';
+export type SourceType = 'File' | 'Database'; // labeled "Source Type" in the UI (was "Format")
 
 export type FieldDataType = 'Text' | 'Number' | 'Date';
 export type FieldKind = 'Text' | 'List';
@@ -48,9 +47,9 @@ export interface Collection {
   name: string;
   type: CollectionType; // labeled "Category" in the UI
   source: CollectionSource; // labeled "Source System" in the UI
-  clientType: InternalOrExternalType; // labeled "Source System Type" in the UI
   status: CollectionStatus;
-  format: CollectionFormat;
+  sourceType: SourceType; // labeled "Source Type" in the UI (was "Format")
+  version: string; // whole-number version stamp, e.g. "1" — bumped by hand, no decimals, no history yet
   fileName: string;
   fields: Field[];
   createdBy: string;
@@ -64,9 +63,9 @@ export interface NewCollectionInput {
   name: string;
   type: CollectionType;
   source: CollectionSource;
-  clientType: InternalOrExternalType;
   status: CollectionStatus;
-  format: CollectionFormat;
+  sourceType: SourceType;
+  version?: string;
   fileName: string;
   fields: Field[];
   createdBy?: string;

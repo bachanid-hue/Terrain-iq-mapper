@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Collection } from '../../../shared/types';
 import ConfirmDialog from './ConfirmDialog';
 import FieldListTable from './FieldListTable';
@@ -6,12 +6,14 @@ import FieldListTable from './FieldListTable';
 export default function CollectionDetail({
   collection,
   collections,
+  autoEdit,
   onBack,
   onDelete,
   onRename,
 }: {
   collection: Collection | null;
   collections: Collection[];
+  autoEdit?: boolean;
   onBack: () => void;
   onDelete: (id: string) => Promise<void>;
   onRename: (id: string, newName: string) => Promise<void>;
@@ -21,6 +23,17 @@ export default function CollectionDetail({
   const [editValue, setEditValue] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
+
+  // "Edit" on the Collections grid lands here and should drop straight into
+  // the rename field, rather than making the person click "Edit name" again.
+  useEffect(() => {
+    if (autoEdit && collection) {
+      setEditValue(collection.name);
+      setRenameError(null);
+      setEditing(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoEdit, collection?.id]);
 
   if (!collection) {
     return <p className="page-sub">Collection not found.</p>;
@@ -69,7 +82,6 @@ export default function CollectionDetail({
         <div style={{ flex: 1, minWidth: 260 }}>
           <span className="type-tag">{categoryLabel}</span>
           {collection.source && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.source}</span>}
-          {collection.clientType && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.clientType}</span>}
           {collection.status && <span className="type-tag" style={{ marginLeft: 6 }}>{collection.status}</span>}
 
           {editing ? (

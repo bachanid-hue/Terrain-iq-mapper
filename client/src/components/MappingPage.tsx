@@ -11,6 +11,16 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
   const [mappingQuery, setMappingQuery] = useState('');
   const [pendingDeleteSaved, setPendingDeleteSaved] = useState<SavedMapping | null>(null);
   const [viewingSaved, setViewingSaved] = useState<SavedMapping | null>(null);
+  const [editNotice, setEditNotice] = useState(false);
+
+  // "Edit" is a work-in-progress feature for now — clicking it should never
+  // navigate anywhere or open another screen, just surface a brief notice,
+  // matching the same action on the Collections grid.
+  useEffect(() => {
+    if (!editNotice) return;
+    const t = setTimeout(() => setEditNotice(false), 3000);
+    return () => clearTimeout(t);
+  }, [editNotice]);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,25 +58,34 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
 
   return (
     <>
-      <h1 className="page-title">Mappings</h1>
-
-      <div className="collections-top-bar">
-        <div className="search-box" style={{ flex: 1, margin: 0 }}>
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.6" />
-            <path d="M12.5 12.5L16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search mappings by name, creator, or date..."
-            value={mappingQuery}
-            onChange={(e) => setMappingQuery(e.target.value)}
-          />
-          {mappingQuery && (
-            <span className="search-box-clear" onClick={() => setMappingQuery('')} title="Clear search">&times;</span>
+      <div className="collections-header-group">
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <h1 className="page-title" style={{ margin: 0 }}>Mappings</h1>
+          {savedMappings.length > 0 && (
+            <span className="fdim" style={{ fontSize: 13 }}>({savedMappings.length})</span>
           )}
         </div>
-        <button className="btn btn-primary" onClick={onNewMapping}>+ New Mapping</button>
+
+        {savedMappings.length > 0 && (
+          <div className="collections-top-bar">
+            <div className="search-box" style={{ flex: '0 1 560px', margin: 0 }}>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M12.5 12.5L16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search mappings by name, creator, or date..."
+                value={mappingQuery}
+                onChange={(e) => setMappingQuery(e.target.value)}
+              />
+              {mappingQuery && (
+                <span className="search-box-clear" onClick={() => setMappingQuery('')} title="Clear search">&times;</span>
+              )}
+            </div>
+            <button className="btn btn-primary" onClick={onNewMapping}>+ New Mapping</button>
+          </div>
+        )}
       </div>
 
       <p className="page-eyebrow" style={{ marginBottom: 10 }}>Saved Mappings</p>
@@ -74,11 +93,8 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
         <p className="page-sub">Loading saved mappings&hellip;</p>
       ) : savedMappings.length === 0 ? (
         <div className="empty-state">
-          <div className="em-title">No mappings yet</div>
-          <p style={{ maxWidth: 340, margin: '0 auto 18px', fontSize: 13 }}>
-            Click &ldquo;New Mapping&rdquo; to compare two collections and save the result here.
-          </p>
-          <button className="btn btn-primary" onClick={onNewMapping}>+ New Mapping</button>
+          <div className="em-title">No Saved Mappings</div>
+          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={onNewMapping}>+ New Mapping</button>
         </div>
       ) : filteredSavedMappings.length === 0 ? (
         <div className="empty-state">
@@ -92,7 +108,7 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
         <div className="field-table">
           <table>
             <thead>
-              <tr><th>Mapping</th><th>Saved By</th><th>Saved On</th><th>Fields</th><th></th></tr>
+              <tr><th>Actions</th><th>Mapping</th><th>Saved By</th><th>Saved On</th><th>Fields</th><th></th></tr>
             </thead>
             <tbody>
               {filteredSavedMappings.map((m) => {
@@ -102,6 +118,47 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
                 });
                 return (
                   <tr key={m.id} className="clickable-row" onClick={() => setViewingSaved(m)}>
+                    <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                      <span className="row-actions">
+                        <button
+                          className="icon-btn"
+                          title="View"
+                          aria-label="View"
+                          style={{ color: 'var(--brass-bright)' }}
+                          onClick={() => setViewingSaved(m)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                            <circle cx="8" cy="8" r="2.1" stroke="currentColor" strokeWidth="1.3" />
+                          </svg>
+                        </button>
+                        <button
+                          className="icon-btn"
+                          title="Edit"
+                          aria-label="Edit"
+                          style={{ color: 'var(--yellow)' }}
+                          onClick={() => setEditNotice(true)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M11 2l3 3-8 8H3v-3l8-8z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                        <button
+                          className="icon-btn"
+                          title="Delete"
+                          aria-label="Delete"
+                          style={{ color: 'var(--rose)' }}
+                          onClick={() => setPendingDeleteSaved(m)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M2.5 4.5h11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                            <path d="M6.2 4.5V3.2a1 1 0 0 1 1-1h1.6a1 1 0 0 1 1 1v1.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M3.6 4.5h8.8l-.7 8.3a1.3 1.3 0 0 1-1.3 1.2H5.6a1.3 1.3 0 0 1-1.3-1.2l-.7-8.3z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                            <path d="M6.4 7v4M8 7v4M9.6 7v4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      </span>
+                    </td>
                     <td className="fname">{m.sourceName} &rarr; {m.targetName}</td>
                     <td className="fdim">{m.savedBy}</td>
                     <td className="fdim">{savedOn}</td>
@@ -112,13 +169,6 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
                         onClick={(e) => { e.stopPropagation(); exportMappingToExcel(m.sourceName, m.targetName, m.rows); }}
                       >
                         Export
-                      </button>{' '}
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        style={{ color: 'var(--rose)' }}
-                        onClick={(e) => { e.stopPropagation(); setPendingDeleteSaved(m); }}
-                      >
-                        Delete
                       </button>
                     </td>
                   </tr>
@@ -145,6 +195,12 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
 
       {viewingSaved && (
         <SavedMappingModal mapping={viewingSaved} onClose={() => setViewingSaved(null)} />
+      )}
+
+      {editNotice && (
+        <div className="toast-notice" role="status">
+          Edit feature is work in progress.
+        </div>
       )}
     </>
   );

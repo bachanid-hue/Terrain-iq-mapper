@@ -3,9 +3,8 @@ import type {
   Collection,
   CollectionType,
   CollectionSource,
-  InternalOrExternalType,
   CollectionStatus,
-  CollectionFormat,
+  SourceType,
   Field,
   FieldDataType,
   FieldKind,
@@ -29,9 +28,8 @@ export default function NewCollectionPage({
     name: string;
     type: CollectionType;
     source: CollectionSource;
-    clientType: InternalOrExternalType;
     status: CollectionStatus;
-    format: CollectionFormat;
+    sourceType: SourceType;
     fileName: string;
     fields: Field[];
     createdBy: string;
@@ -40,9 +38,8 @@ export default function NewCollectionPage({
   const [name, setName] = useState('');
   const [type, setType] = useState<CollectionType | ''>('');
   const [source, setSource] = useState<CollectionSource | ''>('');
-  const [clientType, setClientType] = useState<InternalOrExternalType | ''>('');
   const [status, setStatus] = useState<CollectionStatus | ''>('');
-  const [format, setFormat] = useState<CollectionFormat | ''>('');
+  const [sourceType, setSourceType] = useState<SourceType | ''>('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [addingCategory, setAddingCategory] = useState(false);
@@ -157,7 +154,7 @@ export default function NewCollectionPage({
     }
   }
 
-  const detailsComplete = trimmedName.length > 0 && !!type && !!source && !!clientType && !!status && !!format;
+  const detailsComplete = trimmedName.length > 0 && !!type && !!source && !!status && !!sourceType;
 
   async function handleFile(file: File) {
     setError(null);
@@ -213,15 +210,14 @@ export default function NewCollectionPage({
     !isDuplicateName &&
     !!type &&
     !!source &&
-    !!clientType &&
     !!status &&
-    !!format &&
+    !!sourceType &&
     !!fields &&
     selectedCount > 0 &&
     !saving;
 
   async function handleSave() {
-    if (!canSave || !fields || !fileName || !type || !source || !clientType || !status || !format) return;
+    if (!canSave || !fields || !fileName || !type || !source || !status || !sourceType) return;
     setSaving(true);
     setError(null);
     try {
@@ -229,9 +225,8 @@ export default function NewCollectionPage({
         name: trimmedName,
         type,
         source,
-        clientType,
         status,
-        format,
+        sourceType,
         fileName,
         fields: selectedFields,
         // No login system exists yet — every collection is attributed to a
@@ -248,9 +243,8 @@ export default function NewCollectionPage({
     setName('');
     setType('');
     setSource('');
-    setClientType('');
     setStatus('');
-    setFormat('');
+    setSourceType('');
     setAddingCategory(false);
     setNewCategoryName('');
     setCategoryError(null);
@@ -287,7 +281,7 @@ export default function NewCollectionPage({
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-            <p className="field-hint">A unique, descriptive name for the collection.</p>
+            <p className="field-hint">Enter Collection Name</p>
             {isDuplicateName && (
               <p className="error-text">
                 A collection named "{trimmedName}" already exists. Choose a different name.
@@ -395,14 +389,14 @@ export default function NewCollectionPage({
             {sourceSystemError && <p className="error-text">{sourceSystemError}</p>}
           </div>
 
-          <div className="field-group">
-            <label className="field-label">Source System Type</label>
-            <select value={clientType} onChange={(e) => setClientType(e.target.value as InternalOrExternalType)}>
-              <option value="" disabled hidden>&mdash; Select a type &mdash;</option>
-              <option value="Internal">Internal</option>
-              <option value="External">External</option>
+          <div className="field-group" style={{ marginBottom: 0 }}>
+            <label className="field-label">Source Type</label>
+            <select value={sourceType} onChange={(e) => setSourceType(e.target.value as SourceType)}>
+              <option value="" disabled hidden>&mdash; Select a source type &mdash;</option>
+              <option value="File">File</option>
+              <option value="Database">Database</option>
             </select>
-            <p className="field-hint">Designate where the source system is managed.</p>
+            <p className="field-hint">Identify type of source for a collection.</p>
           </div>
 
           <div className="field-group" style={{ marginBottom: 0 }}>
@@ -412,17 +406,7 @@ export default function NewCollectionPage({
               <option value="Draft">Draft</option>
               <option value="Live">Live</option>
             </select>
-            <p className="field-hint">Differentiate between finished collections and works in progress.</p>
-          </div>
-
-          <div className="field-group" style={{ marginBottom: 0 }}>
-            <label className="field-label">Format</label>
-            <select value={format} onChange={(e) => setFormat(e.target.value as CollectionFormat)}>
-              <option value="" disabled hidden>&mdash; Select a format &mdash;</option>
-              <option value="File">File</option>
-              <option value="Database">Database</option>
-            </select>
-            <p className="field-hint">Identify type of source for a collection.</p>
+            <p className="field-hint">Differentiate between finished collections and work in progress.</p>
           </div>
         </div>
       </div>
@@ -564,7 +548,7 @@ export default function NewCollectionPage({
         <button className="btn btn-primary" disabled={!canSave} onClick={handleSave}>
           {saving ? 'Saving…' : 'Create Collection'}
         </button>
-        <button className="btn btn-ghost" onClick={resetForm}>Cancel</button>
+        <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
       </div>
     </>
   );

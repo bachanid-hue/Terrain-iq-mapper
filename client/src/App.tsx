@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Collection, CollectionType, CollectionSource, InternalOrExternalType, CollectionStatus, CollectionFormat, Field } from '../../shared/types';
+import type { Collection, CollectionType, CollectionSource, CollectionStatus, SourceType, Field } from '../../shared/types';
 import { api } from './lib/api';
 import Sidebar from './components/Sidebar';
 import HomePage from './components/HomePage';
@@ -16,6 +16,7 @@ export default function App() {
   const [view, setView] = useState<View>('home');
   const [collections, setCollections] = useState<Collection[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [autoEdit, setAutoEdit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +39,7 @@ export default function App() {
 
   function navigate(v: View) {
     setActiveId(null);
+    setAutoEdit(false);
     setView(v);
   }
 
@@ -45,9 +47,8 @@ export default function App() {
     name: string;
     type: CollectionType;
     source: CollectionSource;
-    clientType: InternalOrExternalType;
     status: CollectionStatus;
-    format: CollectionFormat;
+    sourceType: SourceType;
     fileName: string;
     fields: Field[];
     createdBy: string;
@@ -83,7 +84,8 @@ export default function App() {
             collections={collections}
             loading={loading}
             error={error}
-            onOpenCollection={(id) => { setActiveId(id); setView('collectionDetail'); }}
+            onOpenCollection={(id) => { setActiveId(id); setAutoEdit(false); setView('collectionDetail'); }}
+            onEditCollection={(id) => { setActiveId(id); setAutoEdit(true); setView('collectionDetail'); }}
             onNewCollection={() => navigate('newCollection')}
             onDeleteCollection={handleDeleteCollection}
           />
@@ -95,6 +97,7 @@ export default function App() {
           <CollectionDetail
             collection={activeCollection}
             collections={collections}
+            autoEdit={autoEdit}
             onBack={() => navigate('dashboard')}
             onDelete={handleDeleteCollection}
             onRename={handleRenameCollection}

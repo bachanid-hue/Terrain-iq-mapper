@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Collection, CollectionType, CollectionSource, InternalOrExternalType, CollectionStatus, CollectionFormat, Field, SavedMapping, Category, SourceSystem } from '../../shared/types.js';
+import type { Collection, CollectionType, CollectionSource, CollectionStatus, SourceType, Field, SavedMapping, Category, SourceSystem } from '../../shared/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -51,17 +51,7 @@ try {
   /* column already exists — nothing to do */
 }
 try {
-  db.exec(`ALTER TABLE collections ADD COLUMN client_type TEXT NOT NULL DEFAULT ''`);
-} catch {
-  /* column already exists — nothing to do */
-}
-try {
   db.exec(`ALTER TABLE collections ADD COLUMN status TEXT NOT NULL DEFAULT ''`);
-} catch {
-  /* column already exists — nothing to do */
-}
-try {
-  db.exec(`ALTER TABLE collections ADD COLUMN format TEXT NOT NULL DEFAULT ''`);
 } catch {
   /* column already exists — nothing to do */
 }
@@ -74,6 +64,50 @@ try {
   db.exec(`ALTER TABLE collections ADD COLUMN edited_at INTEGER`);
 } catch {
   /* column already exists — nothing to do */
+}
+try {
+  db.exec(`ALTER TABLE collections ADD COLUMN version TEXT NOT NULL DEFAULT '1'`);
+} catch {
+  /* column already exists — nothing to do */
+}
+
+// Version is now a whole number (no decimals, no version history) — round
+// down any fractional values an earlier build may have stored (e.g. "1.0"
+// or "2.3") to their integer part, in place, without touching any other
+// column or row.
+for (const row of db.prepare(`SELECT id, version FROM collections`).all() as { id: string; version: string }[]) {
+  const parsed = parseInt(row.version, 10);
+  const normalized = Number.isFinite(parsed) ? String(parsed) : '1';
+  if (normalized !== row.version) {
+    db.prepare('UPDATE collections SET version = ? WHERE id = ?').run(normalized, row.id);
+  }
+}
+
+// One-time breaking migration: "Source System Type" (the old client_type
+// column) has been removed entirely, and "Format" has been renamed to
+// "Source Type" (source_type). These aren't additive changes, so rather
+// than try to carry old rows forward under a new shape, every table is
+// wiped clean the first time a database still has the old client_type
+// column — per explicit instruction, existing data is deleted so the
+// rename can happen on a clean slate.
+const collectionsColumns = (db.prepare(`PRAGMA table_info(collections)`).all() as { name: string }[]).map(
+  (col) => col.name
+);
+if (collectionsColumns.includes('client_type')) {
+  db.exec('DELETE FROM collections');
+  db.exec('DELETE FROM mappings');
+  db.exec('DELETE FROM categories');
+  db.exec('DELETE FROM source_systems');
+  db.exec('ALTER TABLE collections DROP COLUMN client_type');
+}
+if (collectionsColumns.includes('format') && !collectionsColumns.includes('source_type')) {
+  db.exec('ALTER TABLE collections RENAME COLUMN format TO source_type');
+} else if (!collectionsColumns.includes('source_type')) {
+  try {
+    db.exec(`ALTER TABLE collections ADD COLUMN source_type TEXT NOT NULL DEFAULT ''`);
+  } catch {
+    /* column already exists — nothing to do */
+  }
 }
 
 db.exec(`
@@ -118,9 +152,9 @@ interface CollectionRow {
   name: string;
   type: string;
   source: string;
-  client_type: string;
   status: string;
-  format: string;
+  source_type: string;
+  version: string;
   file_name: string;
   fields: string;
   created_by: string;
@@ -135,9 +169,9 @@ function rowToCollection(row: CollectionRow): Collection {
     name: row.name,
     type: row.type as CollectionType,
     source: (row.source || '') as CollectionSource,
-    clientType: (row.client_type || '') as InternalOrExternalType,
     status: (row.status || '') as CollectionStatus,
-    format: (row.format || '') as CollectionFormat,
+    sourceType: (row.source_type || '') as SourceType,
+    version: row.version || '1',
     fileName: row.file_name,
     fields: JSON.parse(row.fields) as Field[],
     createdBy: row.created_by || '',
@@ -189,16 +223,16 @@ export function renameCollection(id: string, name: string, editedBy = 'Test User
 
 export function insertCollection(c: Collection): void {
   db.prepare(
-    `INSERT INTO collections (id, name, type, source, client_type, status, format, file_name, fields, created_by, created_at, edited_by, edited_at)
-     VALUES (@id, @name, @type, @source, @clientType, @status, @format, @fileName, @fields, @createdBy, @createdAt, @editedBy, @editedAt)`
+    `INSERT INTO collections (id, name, type, source, status, source_type, version, file_name, fields, created_by, created_at, edited_by, edited_at)
+     VALUES (@id, @name, @type, @source, @status, @sourceType, @version, @fileName, @fields, @createdBy, @createdAt, @editedBy, @editedAt)`
   ).run({
     id: c.id,
     name: c.name,
     type: c.type,
     source: c.source,
-    clientType: c.clientType,
     status: c.status,
-    format: c.format,
+    sourceType: c.sourceType,
+    version: c.version || '1',
     fileName: c.fileName,
     fields: JSON.stringify(c.fields),
     createdBy: c.createdBy,
