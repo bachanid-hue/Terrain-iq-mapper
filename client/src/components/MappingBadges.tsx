@@ -76,3 +76,18 @@ export function StatusPill({ confidence, notInScope }: { confidence: number | nu
     </span>
   );
 }
+
+// Collection status, styled like the Matched pill: Live = green with 3 rings,
+// Draft = yellow with 2 rings.
+export function CollectionStatusPill({ status }: { status: string }) {
+  const live = status.toLowerCase() === 'live';
+  const color = live ? 'var(--green)' : '#8A5F0F';
+  const bg = live ? '#E3F7EA' : '#FBF0DC';
+  const border = live ? '#BEE8CC' : '#EAD9B0';
+  return (
+    <span className="status-pill2" style={{ background: bg, borderColor: border, color }}>
+      <Rings activeCount={live ? 3 : 2} color={color} size={20} />
+      {live ? 'Live' : 'Draft'}
+    </span>
+  );
+}

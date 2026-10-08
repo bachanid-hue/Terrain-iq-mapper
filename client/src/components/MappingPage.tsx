@@ -4,6 +4,11 @@ import { api } from '../lib/api';
 import { exportMappingToExcel } from '../lib/exportMapping';
 import ConfirmDialog from './ConfirmDialog';
 import SavedMappingModal from './SavedMappingModal';
+import { CollectionStatusPill } from './MappingBadges';
+
+// Placeholder: saved mappings have no status in the data model yet, so every
+// row shows 'Live' for now.
+const PLACEHOLDER_STATUS = 'Live';
 
 export default function MappingPage({ onNewMapping }: { onNewMapping: () => void }) {
   const [savedMappings, setSavedMappings] = useState<SavedMapping[]>([]);
@@ -46,7 +51,7 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
       const savedOn = new Date(m.createdAt).toLocaleDateString(undefined, {
         year: 'numeric', month: 'short', day: 'numeric',
       });
-      const haystack = [m.sourceName, m.targetName, m.savedBy, savedOn].join(' ').toLowerCase();
+      const haystack = [PLACEHOLDER_STATUS, m.sourceName, m.targetName, m.savedBy, savedOn].join(' ').toLowerCase();
       return haystack.includes(q);
     });
   }, [savedMappings, mappingQuery]);
@@ -57,46 +62,35 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
   }
 
   return (
-    <>
-      <div className="collections-header-group">
+    <div className="collections-page">
+      <div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <h1 className="page-title" style={{ margin: 0 }}>Mappings</h1>
-          {savedMappings.length > 0 && (
-            <span className="fdim" style={{ fontSize: 13 }}>({savedMappings.length})</span>
-          )}
         </div>
 
-        {savedMappings.length > 0 && (
-          <div className="collections-top-bar">
-            <div className="search-box" style={{ flex: '0 1 560px', margin: 0 }}>
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.6" />
-                <path d="M12.5 12.5L16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search mappings by name, creator, or date..."
-                value={mappingQuery}
-                onChange={(e) => setMappingQuery(e.target.value)}
-              />
-              {mappingQuery && (
-                <span className="search-box-clear" onClick={() => setMappingQuery('')} title="Clear search">&times;</span>
-              )}
-            </div>
-            <button className="btn btn-primary" onClick={onNewMapping}>+ New Mapping</button>
+        <div className="collections-top-bar">
+          <div className="search-box" style={{ flex: '0 1 560px', margin: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M12.5 12.5L16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search Mappings"
+              value={mappingQuery}
+              onChange={(e) => setMappingQuery(e.target.value)}
+            />
+            {mappingQuery && (
+              <span className="search-box-clear" onClick={() => setMappingQuery('')} title="Clear search">&times;</span>
+            )}
           </div>
-        )}
+          <button className="btn btn-primary" onClick={onNewMapping}>+ New Mapping</button>
+        </div>
       </div>
 
-      <p className="page-eyebrow" style={{ marginBottom: 10 }}>Saved Mappings</p>
       {loadingSaved ? (
-        <p className="page-sub">Loading saved mappings&hellip;</p>
-      ) : savedMappings.length === 0 ? (
-        <div className="empty-state">
-          <div className="em-title">No Saved Mappings</div>
-          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={onNewMapping}>+ New Mapping</button>
-        </div>
-      ) : filteredSavedMappings.length === 0 ? (
+        <p className="page-sub">Loading mappings&hellip;</p>
+      ) : savedMappings.length > 0 && filteredSavedMappings.length === 0 ? (
         <div className="empty-state">
           <div className="em-title">No mappings match "{mappingQuery}"</div>
           <p style={{ maxWidth: 340, margin: '0 auto 18px', fontSize: 13 }}>
@@ -105,10 +99,21 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
           <button className="btn btn-ghost btn-sm" onClick={() => setMappingQuery('')}>Clear search</button>
         </div>
       ) : (
+        <div className="grid-box">
+          <div className="grid-box-header">
+            <div className="grid-box-title">
+              <span className="cdb-accent" />
+              <h2>All Mappings</h2>
+            </div>
+            <span className="grid-box-count">
+              {filteredSavedMappings.length} {filteredSavedMappings.length === 1 ? 'Mapping' : 'Mappings'}
+            </span>
+          </div>
+          <div className="grid-box-divider" />
         <div className="field-table">
           <table>
             <thead>
-              <tr><th>Actions</th><th>Mapping</th><th>Saved By</th><th>Saved On</th><th>Fields</th><th></th></tr>
+              <tr><th>Actions</th><th>Status</th><th>Mapping</th><th>Saved By</th><th>Saved On</th><th>Fields</th><th></th></tr>
             </thead>
             <tbody>
               {filteredSavedMappings.map((m) => {
@@ -159,6 +164,7 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
                         </button>
                       </span>
                     </td>
+                    <td><CollectionStatusPill status={PLACEHOLDER_STATUS} /></td>
                     <td className="fname">{m.sourceName} &rarr; {m.targetName}</td>
                     <td className="fdim">{m.savedBy}</td>
                     <td className="fdim">{savedOn}</td>
@@ -176,6 +182,7 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
               })}
             </tbody>
           </table>
+        </div>
         </div>
       )}
 
@@ -202,6 +209,6 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
           Edit feature is work in progress.
         </div>
       )}
-    </>
+    </div>
   );
 }

@@ -506,6 +506,15 @@
   .field-table tr:last-child td{ border-bottom:none; }
   .field-table tr:hover td{ background:var(--ink-2); }
   .clickable-row{ cursor:pointer; }
+  .grid-box{
+    background:var(--ink-2); border:1px solid var(--line-soft); border-radius:8px;
+    padding:18px 20px 20px; box-shadow:0 1px 3px rgba(22,35,59,.06);
+  }
+  .grid-box-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+  .grid-box-title{ display:flex; align-items:center; gap:10px; }
+  .grid-box-title h2{ font-family:var(--font-display); font-weight:600; font-size:15px; margin:0; color:var(--text); }
+  .grid-box-count{ font-size:12px; color:var(--text-faint); white-space:nowrap; text-align:right; }
+  .grid-box-divider{ height:1px; background:var(--text-dim); margin-bottom:14px; }
   .row-actions{ display:inline-flex; align-items:center; gap:4px; }
   .icon-btn{
     display:inline-flex; align-items:center; justify-content:center;
@@ -757,3 +766,12 @@
   .home-hero-cta{ flex-direction:column; width:100%; max-width:280px; }
   .home-section{ padding:56px 20px; }
 }
+
+  /* Collections page body text color (headers/titles and Status keep their own colors) */
+  .collections-page .field-table td,
+  .collections-page .field-table td.fname,
+  .collections-page .field-table td.fdim,
+  .collections-page .grid-box-count,
+  .collections-page .search-box,
+  .collections-page .search-box input{ color:#323842; }
+  .collections-page .search-box input::placeholder{ color:#323842; opacity:.7; }

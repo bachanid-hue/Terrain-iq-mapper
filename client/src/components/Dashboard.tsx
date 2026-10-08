@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Collection } from '../../../shared/types';
 import ConfirmDialog from './ConfirmDialog';
+import { CollectionStatusPill } from './MappingBadges';
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -61,16 +62,13 @@ export default function Dashboard({
   }, [collections, query]);
 
   return (
-    <>
-      <div className="collections-header-group">
+    <div className="collections-page">
+      <div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <h1 className="page-title" style={{ margin: 0 }}>All Collections</h1>
-          {collections.length > 0 && (
-            <span className="fdim" style={{ fontSize: 13 }}>({collections.length})</span>
-          )}
+          <h1 className="page-title" style={{ margin: 0 }}>Collections</h1>
         </div>
 
-        {collections.length > 0 && (
+        {(
           <div className="collections-top-bar">
             <div className="search-box" style={{ flex: '0 1 560px', margin: 0 }}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -79,7 +77,7 @@ export default function Dashboard({
             </svg>
             <input
               type="text"
-              placeholder="Search by status, name, version, category, source system, source type, date, or creator..."
+              placeholder="Search Collections"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -96,17 +94,7 @@ export default function Dashboard({
 
       {loading ? (
         <p className="page-sub">Loading collections&hellip;</p>
-      ) : collections.length === 0 ? (
-        <div className="empty-state">
-          <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-            <circle cx="22" cy="22" r="19" stroke="var(--text-faint)" strokeWidth="1.3" />
-            <circle cx="22" cy="22" r="12" stroke="var(--text-faint)" strokeWidth="1.3" />
-            <circle cx="22" cy="22" r="5" stroke="var(--text-faint)" strokeWidth="1.3" />
-          </svg>
-          <div className="em-title">No Saved Collections</div>
-          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={onNewCollection}>+ New Collection</button>
-        </div>
-      ) : filtered.length === 0 ? (
+      ) : collections.length > 0 && filtered.length === 0 ? (
         <div className="empty-state">
           <div className="em-title">No collections match "{query}"</div>
           <p style={{ maxWidth: 340, margin: '0 auto 18px', fontSize: 13 }}>
@@ -116,7 +104,17 @@ export default function Dashboard({
         </div>
       ) : (
         <>
-          <p className="page-eyebrow" style={{ marginBottom: 10 }}>Collections</p>
+          <div className="grid-box">
+          <div className="grid-box-header">
+            <div className="grid-box-title">
+              <span className="cdb-accent" />
+              <h2>All Collections</h2>
+            </div>
+            <span className="grid-box-count">
+              {filtered.length} {filtered.length === 1 ? 'Collection' : 'Collections'}
+            </span>
+          </div>
+          <div className="grid-box-divider" />
           <div className="field-table">
             <table>
               <thead>
@@ -180,7 +178,7 @@ export default function Dashboard({
                       </td>
                       <td>
                         {c.status ? (
-                          <span className={`cc-status cc-status-${statusKey}`}>{c.status.toUpperCase()}</span>
+                          <CollectionStatusPill status={c.status} />
                         ) : (
                           <span className="fdim">&mdash;</span>
                         )}
@@ -197,6 +195,7 @@ export default function Dashboard({
                 })}
               </tbody>
             </table>
+          </div>
           </div>
         </>
       )}
@@ -220,6 +219,6 @@ export default function Dashboard({
           Edit feature is work in progress.
         </div>
       )}
-    </>
+    </div>
   );
 }
