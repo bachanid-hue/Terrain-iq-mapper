@@ -4,7 +4,8 @@ import ConfirmDialog from './ConfirmDialog';
 import { CollectionStatusPill } from './MappingBadges';
 
 function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  // M/D/YYYY
+  return new Date(ts).toLocaleDateString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric' });
 }
 
 function dash(v: string | undefined | null): string {
@@ -105,23 +106,25 @@ export default function Dashboard({
       ) : (
         <>
           <div className="grid-box">
-          <div className="grid-box-header">
-            <div className="grid-box-title">
-              <span className="cdb-accent" />
-              <h2>All Collections</h2>
+          <div className="grid-box-sticky">
+            <div className="grid-box-header">
+              <div className="grid-box-title">
+                <span className="cdb-accent" />
+                <h2>All Collections</h2>
+              </div>
+              <span className="grid-box-count">
+                {filtered.length} {filtered.length === 1 ? 'Collection' : 'Collections'}
+              </span>
             </div>
-            <span className="grid-box-count">
-              {filtered.length} {filtered.length === 1 ? 'Collection' : 'Collections'}
-            </span>
+            <div className="grid-box-divider" />
           </div>
-          <div className="grid-box-divider" />
           <div className="field-table">
             <table>
               <thead>
                 <tr>
                   <th>Actions</th>
                   <th>Status</th>
-                  <th>Name</th>
+                  <th className="col-left">Name</th>
                   <th>Version</th>
                   <th>Category</th>
                   <th>Source System</th>
@@ -134,7 +137,7 @@ export default function Dashboard({
                 {filtered.map((c) => {
                   const statusKey = (c.status || '').toLowerCase();
                   return (
-                    <tr key={c.id} className="clickable-row" onClick={() => onOpenCollection(c.id)}>
+                    <tr key={c.id}>
                       <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
                         <span className="row-actions">
                           <button
@@ -183,7 +186,7 @@ export default function Dashboard({
                           <span className="fdim">&mdash;</span>
                         )}
                       </td>
-                      <td className="fname">{c.name}</td>
+                      <td className="fname col-left">{c.name}</td>
                       <td className="fdim">{dash(c.version)}</td>
                       <td className="fdim">{dash(c.type)}</td>
                       <td className="fdim">{dash(c.source)}</td>

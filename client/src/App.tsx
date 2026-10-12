@@ -77,7 +77,7 @@ export default function App() {
 
   return (
     <div className="shell">
-      <Sidebar view={view} collectionCount={collections.length} onNavigate={navigate} />
+      <Sidebar view={view} onNavigate={navigate} />
       <main>
         {view === 'dashboard' && (
           <Dashboard

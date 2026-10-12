@@ -45,6 +45,7 @@ export default function SchedulesPage() {
       </div>
 
       <div className="grid-box">
+        <div className="grid-box-sticky">
         <div className="grid-box-header">
           <div className="grid-box-title">
             <span className="cdb-accent" />
@@ -55,10 +56,11 @@ export default function SchedulesPage() {
           </span>
         </div>
         <div className="grid-box-divider" />
+        </div>
         <div className="field-table">
           <table>
             <thead>
-              <tr>{COLUMNS.map((c) => <th key={c}>{c}</th>)}</tr>
+              <tr>{COLUMNS.map((c) => <th key={c} className={c === 'Name' ? 'col-left' : undefined}>{c}</th>)}</tr>
             </thead>
             <tbody />
           </table>

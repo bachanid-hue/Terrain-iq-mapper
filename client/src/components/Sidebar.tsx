@@ -2,11 +2,9 @@ import type { View } from '../App';
 
 export default function Sidebar({
   view,
-  collectionCount,
   onNavigate,
 }: {
   view: View;
-  collectionCount: number;
   onNavigate: (v: View) => void;
 }) {
   const collectionsActive = view === 'dashboard' || view === 'newCollection' || view === 'collectionDetail';
@@ -44,7 +42,6 @@ export default function Sidebar({
             <rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
           </svg>
           Collections
-          <span className="nav-count">{collectionCount}</span>
         </div>
         <div className={`nav-item ${view === 'mapping' || view === 'newMapping' ? 'active' : ''}`} onClick={() => onNavigate('mapping')}>
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none">

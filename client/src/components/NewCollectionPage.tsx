@@ -58,7 +58,14 @@ export default function NewCollectionPage({
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [helpNotice, setHelpNotice] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!helpNotice) return;
+    const t = setTimeout(() => setHelpNotice(false), 3000);
+    return () => clearTimeout(t);
+  }, [helpNotice]);
 
   const trimmedName = name.trim();
   const isDuplicateName =
@@ -261,27 +268,45 @@ export default function NewCollectionPage({
 
   return (
     <>
-      <div className="back-link" onClick={onCancel}>&larr; All collections</div>
-      <h1 className="page-title">New Collection</h1>
-      <p className="page-sub">All fields are required unless marked as optional.</p>
+      <h1 className="page-title" style={{ marginBottom: 22 }}>New Collection</h1>
 
-      <div className="details-box cd-box">
-        <div className="cdb-header">
+      <div className="cd-menubar">
+        <div className="cdb-header" style={{ marginBottom: 0 }}>
           <span className="cdb-accent" />
           <h2 className="cdb-title">Collection Details</h2>
         </div>
-        <div className="cdb-divider" />
+        <div className="cd-menubar-right">
+          <a
+            href="#"
+            className="cd-help-link"
+            title="Help"
+            aria-label="Help"
+            onClick={(e) => { e.preventDefault(); setHelpNotice(true); }}
+          >
+            ?
+          </a>
+          <div className="cd-menubar-actions">
+            <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+            <button className="btn btn-primary" disabled={!canSave} onClick={handleSave}>
+              {saving ? 'Saving…' : 'Create Collection'}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="details-box cd-box">
 
         <div className="details-grid">
           <div className="field-group">
             <label className="field-label">Collection Name</label>
-            <input
-              type="text"
-              placeholder="e.g. Corebridge SMF"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <p className="field-hint">Enter Collection Name</p>
+            <div className="req-wrap">
+              <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />
+              <input
+                type="text"
+                placeholder="Enter Collection Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
             {isDuplicateName && (
               <p className="error-text">
                 A collection named "{trimmedName}" already exists. Choose a different name.
@@ -291,122 +316,130 @@ export default function NewCollectionPage({
 
           <div className="field-group">
             <label className="field-label">Category</label>
-            {!addingCategory ? (
-              <select
-                value={type}
-                disabled={loadingCategories}
-                onChange={(e) => handleCategorySelect(e.target.value)}
-              >
-                <option value="" disabled hidden>
-                  {loadingCategories ? 'Loading categories\u2026' : '\u2014 Select a category \u2014'}
-                </option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-                <option value={ADD_NEW_CATEGORY}>+ Add New Category</option>
-              </select>
-            ) : (
-              <div className="add-category-form">
-                <input
-                  type="text"
-                  placeholder="New category name"
-                  value={newCategoryName}
-                  autoFocus
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(); }
-                    if (e.key === 'Escape') { setAddingCategory(false); setCategoryError(null); }
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  disabled={!newCategoryName.trim() || categorySaving}
-                  onClick={handleAddCategory}
+            <div className="req-wrap">
+              <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />
+              {!addingCategory ? (
+                <select
+                  value={type}
+                  disabled={loadingCategories}
+                  onChange={(e) => handleCategorySelect(e.target.value)}
                 >
-                  {categorySaving ? 'Adding\u2026' : 'Add'}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => { setAddingCategory(false); setCategoryError(null); }}
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-            <p className="field-hint">Categorize collections for better organization.</p>
+                  <option value="" disabled hidden>
+                    {loadingCategories ? 'Loading categories\u2026' : '\u2014 Select a category \u2014'}
+                  </option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                  <option value={ADD_NEW_CATEGORY}>+ Add New Category</option>
+                </select>
+              ) : (
+                <div className="add-category-form">
+                  <input
+                    type="text"
+                    placeholder="New category name"
+                    value={newCategoryName}
+                    autoFocus
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(); }
+                      if (e.key === 'Escape') { setAddingCategory(false); setCategoryError(null); }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={!newCategoryName.trim() || categorySaving}
+                    onClick={handleAddCategory}
+                  >
+                    {categorySaving ? 'Adding\u2026' : 'Add'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setAddingCategory(false); setCategoryError(null); }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
             {categoryError && <p className="error-text">{categoryError}</p>}
           </div>
 
           <div className="field-group">
             <label className="field-label">Source System</label>
-            {!addingSourceSystem ? (
-              <select
-                value={source}
-                disabled={loadingSourceSystems}
-                onChange={(e) => handleSourceSystemSelect(e.target.value)}
-              >
-                <option value="" disabled hidden>
-                  {loadingSourceSystems ? 'Loading source systems\u2026' : '\u2014 Select Source System \u2014'}
-                </option>
-                {sourceSystems.map((s) => (
-                  <option key={s.id} value={s.name}>{s.name}</option>
-                ))}
-                <option value={ADD_NEW_SOURCE_SYSTEM}>+ Add New Source System</option>
-              </select>
-            ) : (
-              <div className="add-category-form">
-                <input
-                  type="text"
-                  placeholder="New source system name"
-                  value={newSourceSystemName}
-                  autoFocus
-                  onChange={(e) => setNewSourceSystemName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); handleAddSourceSystem(); }
-                    if (e.key === 'Escape') { setAddingSourceSystem(false); setSourceSystemError(null); }
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  disabled={!newSourceSystemName.trim() || sourceSystemSaving}
-                  onClick={handleAddSourceSystem}
+            <div className="req-wrap">
+              <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />
+              {!addingSourceSystem ? (
+                <select
+                  value={source}
+                  disabled={loadingSourceSystems}
+                  onChange={(e) => handleSourceSystemSelect(e.target.value)}
                 >
-                  {sourceSystemSaving ? 'Adding\u2026' : 'Add'}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => { setAddingSourceSystem(false); setSourceSystemError(null); }}
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-            <p className="field-hint">Track the system where the collection is sourced from.</p>
+                  <option value="" disabled hidden>
+                    {loadingSourceSystems ? 'Loading source systems\u2026' : '\u2014 Select Source System \u2014'}
+                  </option>
+                  {sourceSystems.map((s) => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                  <option value={ADD_NEW_SOURCE_SYSTEM}>+ Add New Source System</option>
+                </select>
+              ) : (
+                <div className="add-category-form">
+                  <input
+                    type="text"
+                    placeholder="New source system name"
+                    value={newSourceSystemName}
+                    autoFocus
+                    onChange={(e) => setNewSourceSystemName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); handleAddSourceSystem(); }
+                      if (e.key === 'Escape') { setAddingSourceSystem(false); setSourceSystemError(null); }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={!newSourceSystemName.trim() || sourceSystemSaving}
+                    onClick={handleAddSourceSystem}
+                  >
+                    {sourceSystemSaving ? 'Adding\u2026' : 'Add'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setAddingSourceSystem(false); setSourceSystemError(null); }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
             {sourceSystemError && <p className="error-text">{sourceSystemError}</p>}
           </div>
 
           <div className="field-group" style={{ marginBottom: 0 }}>
             <label className="field-label">Source Type</label>
-            <select value={sourceType} onChange={(e) => setSourceType(e.target.value as SourceType)}>
-              <option value="" disabled hidden>&mdash; Select a source type &mdash;</option>
-              <option value="File">File</option>
-              <option value="Database">Database</option>
-            </select>
-            <p className="field-hint">Identify type of source for a collection.</p>
+            <div className="req-wrap">
+              <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />
+              <select value={sourceType} onChange={(e) => setSourceType(e.target.value as SourceType)}>
+                <option value="" disabled hidden>&mdash; Select a source type &mdash;</option>
+                <option value="File">File</option>
+                <option value="Database">Database</option>
+              </select>
+            </div>
           </div>
 
           <div className="field-group" style={{ marginBottom: 0 }}>
             <label className="field-label">Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as CollectionStatus)}>
-              <option value="" disabled hidden>&mdash; Select a status &mdash;</option>
-              <option value="Draft">Draft</option>
-              <option value="Live">Live</option>
-            </select>
-            <p className="field-hint">Differentiate between finished collections and work in progress.</p>
+            <div className="req-wrap">
+              <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />
+              <select value={status} onChange={(e) => setStatus(e.target.value as CollectionStatus)}>
+                <option value="" disabled hidden>&mdash; Select a status &mdash;</option>
+                <option value="Draft">Draft</option>
+                <option value="Live">Live</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -544,12 +577,13 @@ export default function NewCollectionPage({
 
       {error && <p className="error-text" style={{ marginBottom: 16 }}>{error}</p>}
 
-      <div className="modal-actions" style={{ justifyContent: 'flex-start' }}>
-        <button className="btn btn-primary" disabled={!canSave} onClick={handleSave}>
-          {saving ? 'Saving…' : 'Create Collection'}
-        </button>
-        <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-      </div>
+
+      {helpNotice && (
+        <div className="toast-notice" role="status">
+          <span aria-hidden="true" style={{ marginRight: 8, fontSize: 16, verticalAlign: '-2px' }}>&#128522;</span>
+          Help is on its way
+        </div>
+      )}
     </>
   );
 }

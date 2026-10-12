@@ -775,3 +775,96 @@
   .collections-page .search-box,
   .collections-page .search-box input{ color:#323842; }
   .collections-page .search-box input::placeholder{ color:#323842; opacity:.7; }
+
+
+  /* Collections / Mappings / Schedules page layout */
+  main:has(.collections-page){ max-width:none; padding-top:29px; }
+  .collections-page .page-title{ line-height:30px; }
+  .collections-page .field-table th,
+  .collections-page .field-table td{ text-align:center; }
+  .collections-page .field-table th.col-left,
+  .collections-page .field-table td.col-left{ text-align:left; }
+  .collections-page .row-actions{ justify-content:center; }
+  /* Sticky header block (title + search bar + New button). It pulls up into
+     main's top padding so the title keeps lining up with the sidebar logo. */
+  .collections-page > div:first-child{
+    position:sticky; top:0; z-index:20;
+    margin-top:-29px; padding-top:29px; margin-bottom:16px;
+    background:var(--ink);
+  }
+  .collections-page .collections-top-bar{ margin:0; padding:29.5px 0 14px; }
+
+  /* Collections: the "All Collections" label + count row stays pinned just
+     below the sticky page header while the grid scrolls underneath. */
+  .collections-page .grid-box-sticky{
+    position:sticky; top:166.5px; z-index:10;
+    background:var(--ink-2); padding-top:6px; margin-top:-6px;
+  }
+  /* Collections: column headers pin under the label row. Needs overflow
+     visible on the table wrapper (overflow:hidden would stop sticky). */
+  .collections-page .field-table{ overflow:visible; }
+  .collections-page .field-table th{
+    position:sticky; top:205.5px; z-index:5; background:var(--ink-2);
+    box-shadow:inset 0 -1px 0 var(--line-soft);
+  }
+  .collections-page .field-table th:first-child{ border-top-left-radius:var(--radius); }
+  .collections-page .field-table th:last-child{ border-top-right-radius:var(--radius); }
+
+  /* Grid values: same font family and color as the column names (#617791). */
+  .collections-page .field-table td,
+  .collections-page .field-table td.fname,
+  .collections-page .field-table td.fdim{
+    font-family:var(--font-body); color:var(--text-faint);
+  }
+  /* Start the grid at the far left: tighter card padding, and the Actions
+     column hugs the left edge instead of being centered in a wide column. */
+  .collections-page .grid-box{ padding-left:12px; padding-right:12px; }
+  .collections-page .field-table th:first-child,
+  .collections-page .field-table td:first-child{
+    text-align:left; padding-left:12px; width:1%; white-space:nowrap;
+  }
+  .collections-page .field-table td:first-child .row-actions{ justify-content:flex-start; }
+
+  /* New Collection: sticky top menu bar — floating frosted-glass bar */
+  .cd-menubar{
+    position:sticky; top:12px; z-index:20;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    margin:0 0 24px; padding:12px 14px 12px 22px;
+    background:rgba(255,255,255,.93);
+    -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px);
+    border:1px solid rgba(22,35,59,.08); border-radius:16px;
+    box-shadow:0 10px 30px -12px rgba(22,35,59,.22), 0 1px 2px rgba(22,35,59,.06);
+  }
+  .cd-menubar .cdb-accent{ width:8px; height:8px; border-radius:50%; background:var(--brass); box-shadow:0 0 0 4px rgba(37,99,235,.14); }
+  .cd-menubar .cdb-title{ font-family:var(--font-body); font-weight:600; font-size:16px; letter-spacing:-.005em; }
+  .cd-menubar-actions{ display:flex; align-items:center; gap:6px; }
+  .cd-menubar .btn{ border-radius:999px; padding:9px 20px; font-weight:600; font-size:13.5px; }
+  .cd-menubar .btn-ghost{ border-color:transparent; background:transparent; color:var(--text-dim); }
+  .cd-menubar .btn-ghost:hover{ background:rgba(22,35,59,.06); color:var(--text); }
+  .cd-menubar .btn-primary{ box-shadow:0 6px 14px -6px rgba(37,99,235,.6); }
+  .cd-menubar .btn-primary:disabled{ box-shadow:none; }
+
+  /* Required-field corner flag */
+  .req-wrap{ position:relative; }
+  .req-flag{
+    position:absolute; top:0; right:0; width:0; height:0; z-index:2; cursor:help;
+    border-top:12px solid #E8736B; border-left:12px solid transparent;
+    border-top-right-radius:2px;
+  }
+  .req-flag::before{ content:''; position:absolute; top:-12px; right:0; width:16px; height:16px; } /* larger hover target */
+  .req-flag::after{
+    content:attr(data-tip); position:absolute; top:-6px; right:16px; white-space:nowrap;
+    background:#323842; color:#fff; font-size:11.5px; font-weight:500; padding:4px 8px; border-radius:6px;
+    opacity:0; pointer-events:none; transform:translateX(4px); transition:opacity .12s, transform .12s;
+  }
+  .req-flag:hover::after{ opacity:1; transform:none; }
+
+  /* Menu bar: help link stacked above the buttons */
+  .cd-menubar-right{ display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+  .cd-help-link{
+    width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; line-height:1; text-decoration:none;
+    color:var(--brass); border:1.5px solid var(--brass); background:transparent;
+    transition:background .15s, color .15s;
+  }
+  .cd-help-link:hover{ background:var(--brass); color:#fff; }

@@ -100,6 +100,7 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
         </div>
       ) : (
         <div className="grid-box">
+          <div className="grid-box-sticky">
           <div className="grid-box-header">
             <div className="grid-box-title">
               <span className="cdb-accent" />
@@ -110,10 +111,11 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
             </span>
           </div>
           <div className="grid-box-divider" />
+          </div>
         <div className="field-table">
           <table>
             <thead>
-              <tr><th>Actions</th><th>Status</th><th>Mapping</th><th>Saved By</th><th>Saved On</th><th>Fields</th><th></th></tr>
+              <tr><th>Actions</th><th>Status</th><th className="col-left">Mapping</th><th>Saved By</th><th>Saved On</th><th>Fields</th><th></th></tr>
             </thead>
             <tbody>
               {filteredSavedMappings.map((m) => {
@@ -165,7 +167,7 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
                       </span>
                     </td>
                     <td><CollectionStatusPill status={PLACEHOLDER_STATUS} /></td>
-                    <td className="fname">{m.sourceName} &rarr; {m.targetName}</td>
+                    <td className="fname col-left">{m.sourceName} &rarr; {m.targetName}</td>
                     <td className="fdim">{m.savedBy}</td>
                     <td className="fdim">{savedOn}</td>
                     <td className="fdim">{matched}/{m.rows.length} matched</td>
