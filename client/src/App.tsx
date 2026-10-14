@@ -87,6 +87,7 @@ export default function App() {
             onOpenCollection={(id) => { setActiveId(id); setAutoEdit(false); setView('collectionDetail'); }}
             onEditCollection={(id) => { setActiveId(id); setAutoEdit(true); setView('collectionDetail'); }}
             onNewCollection={() => navigate('newCollection')}
+            onRefresh={refresh}
             onDeleteCollection={handleDeleteCollection}
           />
         )}
@@ -104,7 +105,7 @@ export default function App() {
           />
         )}
         {view === 'mapping' && (
-          <MappingPage onNewMapping={() => navigate('newMapping')} />
+          <MappingPage onNewMapping={() => navigate('newMapping')} hasCollections={collections.length > 0} />
         )}
         {view === 'newMapping' && (
           <NewMappingPage
@@ -113,7 +114,7 @@ export default function App() {
             onCancel={() => navigate('mapping')}
           />
         )}
-        {view === 'schedules' && <SchedulesPage />}
+        {view === 'schedules' && <SchedulesPage hasCollections={collections.length > 0} />}
       </main>
     </div>
   );

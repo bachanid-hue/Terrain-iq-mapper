@@ -18,6 +18,7 @@ export default function Dashboard({
   error,
   onOpenCollection,
   onNewCollection,
+  onRefresh,
   onDeleteCollection,
 }: {
   collections: Collection[];
@@ -26,10 +27,12 @@ export default function Dashboard({
   onOpenCollection: (id: string) => void;
   onEditCollection: (id: string) => void;
   onNewCollection: () => void;
+  onRefresh: () => Promise<void>;
   onDeleteCollection: (id: string) => Promise<void>;
 }) {
   const [pendingDelete, setPendingDelete] = useState<Collection | null>(null);
   const [editNotice, setEditNotice] = useState(false);
+  const [helpNotice, setHelpNotice] = useState(false);
 
   // "Edit" is a work-in-progress feature for now — clicking it should never
   // navigate anywhere or open another screen, just surface a brief notice.
@@ -38,6 +41,12 @@ export default function Dashboard({
     const t = setTimeout(() => setEditNotice(false), 3000);
     return () => clearTimeout(t);
   }, [editNotice]);
+
+  useEffect(() => {
+    if (!helpNotice) return;
+    const t = setTimeout(() => setHelpNotice(false), 3000);
+    return () => clearTimeout(t);
+  }, [helpNotice]);
   const [query, setQuery] = useState('');
 
   // Search matches every column shown in the grid below: Status, Name,
@@ -87,13 +96,20 @@ export default function Dashboard({
             )}
           </div>
           <button className="btn btn-primary" onClick={onNewCollection}>+ New Collection</button>
+          <button className="btn btn-primary btn-refresh" onClick={() => onRefresh()} disabled={loading} title="Refresh">
+            <svg className={loading ? 'spin' : undefined} width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M13.8 2.2v3.1h-3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Refresh
+          </button>
           </div>
         )}
       </div>
 
       {error && <p className="error-text" style={{ marginBottom: 20 }}>{error}</p>}
 
-      {loading ? (
+      {loading && collections.length === 0 ? (
         <p className="page-sub">Loading collections&hellip;</p>
       ) : collections.length > 0 && filtered.length === 0 ? (
         <div className="empty-state">
@@ -112,8 +128,19 @@ export default function Dashboard({
                 <span className="cdb-accent" />
                 <h2>All Collections</h2>
               </div>
-              <span className="grid-box-count">
-                {filtered.length} {filtered.length === 1 ? 'Collection' : 'Collections'}
+              <span className="grid-box-right">
+                <span className="grid-box-count">
+                  {filtered.length} {filtered.length === 1 ? 'Collection' : 'Collections'}
+                </span>
+                <a
+                  href="#"
+                  className="cd-help-link"
+                  title="Help"
+                  aria-label="Help"
+                  onClick={(e) => { e.preventDefault(); setHelpNotice(true); }}
+                >
+                  ?
+                </a>
               </span>
             </div>
             <div className="grid-box-divider" />
@@ -215,6 +242,13 @@ export default function Dashboard({
             await onDeleteCollection(id);
           }}
         />
+      )}
+
+      {helpNotice && (
+        <div className="toast-notice" role="status">
+          <span aria-hidden="true" style={{ marginRight: 8, fontSize: 16, verticalAlign: '-2px' }}>&#128522;</span>
+          Help is on its way
+        </div>
       )}
 
       {editNotice && (

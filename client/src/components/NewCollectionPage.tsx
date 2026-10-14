@@ -13,6 +13,7 @@ import type {
 } from '../../../shared/types';
 import { parseFieldsFromFile } from '../lib/parseExcel';
 import { api } from '../lib/api';
+import HelpPanel from './HelpPanel';
 
 const ADD_NEW_CATEGORY = '__add_new_category__';
 const ADD_NEW_SOURCE_SYSTEM = '__add_new_source_system__';
@@ -58,14 +59,8 @@ export default function NewCollectionPage({
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [helpNotice, setHelpNotice] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!helpNotice) return;
-    const t = setTimeout(() => setHelpNotice(false), 3000);
-    return () => clearTimeout(t);
-  }, [helpNotice]);
 
   const trimmedName = name.trim();
   const isDuplicateName =
@@ -268,38 +263,58 @@ export default function NewCollectionPage({
 
   return (
     <>
-      <h1 className="page-title" style={{ marginBottom: 22 }}>New Collection</h1>
-
-      <div className="cd-menubar">
-        <div className="cdb-header" style={{ marginBottom: 0 }}>
-          <span className="cdb-accent" />
-          <h2 className="cdb-title">Collection Details</h2>
-        </div>
-        <div className="cd-menubar-right">
-          <a
-            href="#"
-            className="cd-help-link"
-            title="Help"
-            aria-label="Help"
-            onClick={(e) => { e.preventDefault(); setHelpNotice(true); }}
-          >
-            ?
-          </a>
-          <div className="cd-menubar-actions">
-            <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-            <button className="btn btn-primary" disabled={!canSave} onClick={handleSave}>
-              {saving ? 'Saving…' : 'Create Collection'}
-            </button>
-          </div>
+      <div className="nc-header">
+        <h1 className="page-title" style={{ margin: 0 }}>New Collection</h1>
+        <div className="nc-actions">
+          <button className="btn btn-primary" disabled={!canSave} onClick={handleSave}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M3 2.5h8l2.5 2.5v8a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+              <path d="M5 2.5v3.5h5V2.5M5 13.5V9h6v4.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+            </svg>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button className="btn btn-ghost" onClick={resetForm}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M13.8 2.2v3.1h-3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Reset
+          </button>
+          <button className="btn btn-ghost" onClick={onCancel}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            Cancel
+          </button>
         </div>
       </div>
+
       <div className="details-box cd-box">
+        <div className="cdb-header cdb-header-split">
+          <div className="cdb-header-left">
+            <span className="cdb-accent" />
+            <h2 className="cdb-title">Collection Details</h2>
+          </div>
+          <span className="grid-box-right">
+            <span className="cdb-note">Populate all required fields</span>
+            <a
+              href="#"
+              className="cd-help-link"
+              title="Help"
+              aria-label="Help"
+              onClick={(e) => { e.preventDefault(); setHelpOpen(true); }}
+            >
+              ?
+            </a>
+          </span>
+        </div>
+        <div className="cdb-divider" />
 
         <div className="details-grid">
           <div className="field-group">
             <label className="field-label">Collection Name</label>
             <div className="req-wrap">
-              <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />
+              {!trimmedName && <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />}
               <input
                 type="text"
                 placeholder="Enter Collection Name"
@@ -317,7 +332,7 @@ export default function NewCollectionPage({
           <div className="field-group">
             <label className="field-label">Category</label>
             <div className="req-wrap">
-              <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />
+              {!type && <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />}
               {!addingCategory ? (
                 <select
                   value={type}
@@ -369,7 +384,7 @@ export default function NewCollectionPage({
           <div className="field-group">
             <label className="field-label">Source System</label>
             <div className="req-wrap">
-              <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />
+              {!source && <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />}
               {!addingSourceSystem ? (
                 <select
                   value={source}
@@ -421,7 +436,7 @@ export default function NewCollectionPage({
           <div className="field-group" style={{ marginBottom: 0 }}>
             <label className="field-label">Source Type</label>
             <div className="req-wrap">
-              <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />
+              {!sourceType && <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />}
               <select value={sourceType} onChange={(e) => setSourceType(e.target.value as SourceType)}>
                 <option value="" disabled hidden>&mdash; Select a source type &mdash;</option>
                 <option value="File">File</option>
@@ -433,7 +448,7 @@ export default function NewCollectionPage({
           <div className="field-group" style={{ marginBottom: 0 }}>
             <label className="field-label">Status</label>
             <div className="req-wrap">
-              <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />
+              {!status && <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />}
               <select value={status} onChange={(e) => setStatus(e.target.value as CollectionStatus)}>
                 <option value="" disabled hidden>&mdash; Select a status &mdash;</option>
                 <option value="Draft">Draft</option>
@@ -578,12 +593,7 @@ export default function NewCollectionPage({
       {error && <p className="error-text" style={{ marginBottom: 16 }}>{error}</p>}
 
 
-      {helpNotice && (
-        <div className="toast-notice" role="status">
-          <span aria-hidden="true" style={{ marginRight: 8, fontSize: 16, verticalAlign: '-2px' }}>&#128522;</span>
-          Help is on its way
-        </div>
-      )}
+      <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
     </>
   );
 }

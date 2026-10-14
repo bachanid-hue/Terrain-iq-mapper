@@ -4,9 +4,16 @@ import { useEffect, useState } from 'react';
 // replaced with real schedule columns once the data model exists.
 const COLUMNS = ['Actions', 'Status', 'Name', 'Version', 'Category', 'Source System', 'Source Type', 'Created On', 'Created By'];
 
-export default function SchedulesPage() {
+export default function SchedulesPage({ hasCollections }: { hasCollections: boolean }) {
   const [query, setQuery] = useState('');
   const [notice, setNotice] = useState(false);
+  const [helpNotice, setHelpNotice] = useState(false);
+
+  useEffect(() => {
+    if (!helpNotice) return;
+    const t = setTimeout(() => setHelpNotice(false), 3000);
+    return () => clearTimeout(t);
+  }, [helpNotice]);
 
   useEffect(() => {
     if (!notice) return;
@@ -40,7 +47,14 @@ export default function SchedulesPage() {
               <span className="search-box-clear" onClick={() => setQuery('')} title="Clear search">&times;</span>
             )}
           </div>
-          <button className="btn btn-primary" onClick={() => setNotice(true)}>+ New Schedule</button>
+          <button
+            className="btn btn-primary"
+            onClick={() => setNotice(true)}
+            disabled={!hasCollections}
+            title={hasCollections ? undefined : 'Create a collection first'}
+          >
+            + New Schedule
+          </button>
         </div>
       </div>
 
@@ -51,8 +65,19 @@ export default function SchedulesPage() {
             <span className="cdb-accent" />
             <h2>All Schedules</h2>
           </div>
-          <span className="grid-box-count">
-            {rows.length} {rows.length === 1 ? 'Schedule' : 'Schedules'}
+          <span className="grid-box-right">
+            <span className="grid-box-count">
+              {rows.length} {rows.length === 1 ? 'Schedule' : 'Schedules'}
+            </span>
+            <a
+              href="#"
+              className="cd-help-link"
+              title="Help"
+              aria-label="Help"
+              onClick={(e) => { e.preventDefault(); setHelpNotice(true); }}
+            >
+              ?
+            </a>
           </span>
         </div>
         <div className="grid-box-divider" />
@@ -66,6 +91,13 @@ export default function SchedulesPage() {
           </table>
         </div>
       </div>
+
+      {helpNotice && (
+        <div className="toast-notice" role="status">
+          <span aria-hidden="true" style={{ marginRight: 8, fontSize: 16, verticalAlign: '-2px' }}>&#128522;</span>
+          Help is on its way
+        </div>
+      )}
 
       {notice && (
         <div className="toast-notice" role="status">

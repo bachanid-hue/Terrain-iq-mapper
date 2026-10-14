@@ -10,13 +10,20 @@ import { CollectionStatusPill } from './MappingBadges';
 // row shows 'Live' for now.
 const PLACEHOLDER_STATUS = 'Live';
 
-export default function MappingPage({ onNewMapping }: { onNewMapping: () => void }) {
+export default function MappingPage({
+  onNewMapping,
+  hasCollections,
+}: {
+  onNewMapping: () => void;
+  hasCollections: boolean;
+}) {
   const [savedMappings, setSavedMappings] = useState<SavedMapping[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(true);
   const [mappingQuery, setMappingQuery] = useState('');
   const [pendingDeleteSaved, setPendingDeleteSaved] = useState<SavedMapping | null>(null);
   const [viewingSaved, setViewingSaved] = useState<SavedMapping | null>(null);
   const [editNotice, setEditNotice] = useState(false);
+  const [helpNotice, setHelpNotice] = useState(false);
 
   // "Edit" is a work-in-progress feature for now — clicking it should never
   // navigate anywhere or open another screen, just surface a brief notice,
@@ -26,6 +33,12 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
     const t = setTimeout(() => setEditNotice(false), 3000);
     return () => clearTimeout(t);
   }, [editNotice]);
+
+  useEffect(() => {
+    if (!helpNotice) return;
+    const t = setTimeout(() => setHelpNotice(false), 3000);
+    return () => clearTimeout(t);
+  }, [helpNotice]);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,7 +97,14 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
               <span className="search-box-clear" onClick={() => setMappingQuery('')} title="Clear search">&times;</span>
             )}
           </div>
-          <button className="btn btn-primary" onClick={onNewMapping}>+ New Mapping</button>
+          <button
+            className="btn btn-primary"
+            onClick={onNewMapping}
+            disabled={!hasCollections}
+            title={hasCollections ? undefined : 'Create a collection first'}
+          >
+            + New Mapping
+          </button>
         </div>
       </div>
 
@@ -106,8 +126,19 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
               <span className="cdb-accent" />
               <h2>All Mappings</h2>
             </div>
-            <span className="grid-box-count">
-              {filteredSavedMappings.length} {filteredSavedMappings.length === 1 ? 'Mapping' : 'Mappings'}
+            <span className="grid-box-right">
+              <span className="grid-box-count">
+                {filteredSavedMappings.length} {filteredSavedMappings.length === 1 ? 'Mapping' : 'Mappings'}
+              </span>
+              <a
+                href="#"
+                className="cd-help-link"
+                title="Help"
+                aria-label="Help"
+                onClick={(e) => { e.preventDefault(); setHelpNotice(true); }}
+              >
+                ?
+              </a>
             </span>
           </div>
           <div className="grid-box-divider" />
@@ -204,6 +235,13 @@ export default function MappingPage({ onNewMapping }: { onNewMapping: () => void
 
       {viewingSaved && (
         <SavedMappingModal mapping={viewingSaved} onClose={() => setViewingSaved(null)} />
+      )}
+
+      {helpNotice && (
+        <div className="toast-notice" role="status">
+          <span aria-hidden="true" style={{ marginRight: 8, fontSize: 16, verticalAlign: '-2px' }}>&#128522;</span>
+          Help is on its way
+        </div>
       )}
 
       {editNotice && (
