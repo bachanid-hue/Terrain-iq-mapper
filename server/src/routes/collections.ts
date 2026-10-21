@@ -5,6 +5,7 @@ import {
   getCollection,
   insertCollection,
   deleteCollection,
+  isCollectionUsedInMapping,
   findCollectionByName,
   renameCollection,
   findCategoryByName,
@@ -120,6 +121,9 @@ collectionsRouter.patch('/:id', (req, res) => {
 // There is no separate stored Excel file to clean up: only the parsed field
 // list and file name are ever persisted, so deleting the row removes everything.
 collectionsRouter.delete('/:id', (req, res) => {
+  if (isCollectionUsedInMapping(req.params.id)) {
+    return res.status(409).json({ error: 'Collection used in Mapping, cannot be deleted' });
+  }
   const removed = deleteCollection(req.params.id);
   if (!removed) return res.status(404).json({ error: 'Collection not found' });
   res.status(204).send();

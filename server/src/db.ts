@@ -303,6 +303,14 @@ export function insertSavedMapping(m: SavedMapping): void {
   });
 }
 
+// True when any saved mapping uses this collection as its source or target.
+export function isCollectionUsedInMapping(collectionId: string): boolean {
+  const row = db
+    .prepare('SELECT 1 AS x FROM mappings WHERE source_id = ? OR target_id = ? LIMIT 1')
+    .get(collectionId, collectionId);
+  return !!row;
+}
+
 export function deleteSavedMapping(id: string): boolean {
   const result = db.prepare('DELETE FROM mappings WHERE id = ?').run(id);
   return result.changes > 0;

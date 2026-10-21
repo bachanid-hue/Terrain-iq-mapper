@@ -15,8 +15,6 @@ import { parseFieldsFromFile } from '../lib/parseExcel';
 import { api } from '../lib/api';
 import HelpPanel from './HelpPanel';
 
-const ADD_NEW_CATEGORY = '__add_new_category__';
-const ADD_NEW_SOURCE_SYSTEM = '__add_new_source_system__';
 
 export default function NewCollectionPage({
   collections,
@@ -43,16 +41,8 @@ export default function NewCollectionPage({
   const [sourceType, setSourceType] = useState<SourceType | ''>('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
-  const [addingCategory, setAddingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [categoryError, setCategoryError] = useState<string | null>(null);
-  const [categorySaving, setCategorySaving] = useState(false);
   const [sourceSystems, setSourceSystems] = useState<SourceSystem[]>([]);
   const [loadingSourceSystems, setLoadingSourceSystems] = useState(true);
-  const [addingSourceSystem, setAddingSourceSystem] = useState(false);
-  const [newSourceSystemName, setNewSourceSystemName] = useState('');
-  const [sourceSystemError, setSourceSystemError] = useState<string | null>(null);
-  const [sourceSystemSaving, setSourceSystemSaving] = useState(false);
   const [fields, setFields] = useState<Field[] | null>(null);
   const [selected, setSelected] = useState<boolean[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -63,6 +53,8 @@ export default function NewCollectionPage({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const trimmedName = name.trim();
+  const trimmedType = type.trim();
+  const trimmedSource = source.trim();
   const isDuplicateName =
     trimmedName.length > 0 && collections.some((c) => c.name.toLowerCase() === trimmedName.toLowerCase());
 
@@ -100,63 +92,7 @@ export default function NewCollectionPage({
     };
   }, []);
 
-  function handleCategorySelect(value: string) {
-    if (value === ADD_NEW_CATEGORY) {
-      setAddingCategory(true);
-      setNewCategoryName('');
-      setCategoryError(null);
-      return;
-    }
-    setType(value as CollectionType);
-  }
-
-  async function handleAddCategory() {
-    const trimmed = newCategoryName.trim();
-    if (!trimmed) return;
-    setCategorySaving(true);
-    setCategoryError(null);
-    try {
-      const created = await api.createCategory({ name: trimmed, createdBy: 'Test User' });
-      setCategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
-      setType(created.name);
-      setAddingCategory(false);
-      setNewCategoryName('');
-    } catch (e) {
-      setCategoryError(e instanceof Error ? e.message : 'Failed to add category.');
-    } finally {
-      setCategorySaving(false);
-    }
-  }
-
-  function handleSourceSystemSelect(value: string) {
-    if (value === ADD_NEW_SOURCE_SYSTEM) {
-      setAddingSourceSystem(true);
-      setNewSourceSystemName('');
-      setSourceSystemError(null);
-      return;
-    }
-    setSource(value as CollectionSource);
-  }
-
-  async function handleAddSourceSystem() {
-    const trimmed = newSourceSystemName.trim();
-    if (!trimmed) return;
-    setSourceSystemSaving(true);
-    setSourceSystemError(null);
-    try {
-      const created = await api.createSourceSystem({ name: trimmed, createdBy: 'Test User' });
-      setSourceSystems((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
-      setSource(created.name);
-      setAddingSourceSystem(false);
-      setNewSourceSystemName('');
-    } catch (e) {
-      setSourceSystemError(e instanceof Error ? e.message : 'Failed to add source system.');
-    } finally {
-      setSourceSystemSaving(false);
-    }
-  }
-
-  const detailsComplete = trimmedName.length > 0 && !!type && !!source && !!status && !!sourceType;
+  const detailsComplete = trimmedName.length > 0 && !!trimmedType && !!trimmedSource && !!status && !!sourceType;
 
   async function handleFile(file: File) {
     setError(null);
@@ -210,8 +146,8 @@ export default function NewCollectionPage({
   const canSave =
     trimmedName.length > 0 &&
     !isDuplicateName &&
-    !!type &&
-    !!source &&
+    !!trimmedType &&
+    !!trimmedSource &&
     !!status &&
     !!sourceType &&
     !!fields &&
@@ -219,14 +155,34 @@ export default function NewCollectionPage({
     !saving;
 
   async function handleSave() {
-    if (!canSave || !fields || !fileName || !type || !source || !status || !sourceType) return;
+    if (!canSave || !fields || !fileName || !trimmedType || !trimmedSource || !status || !sourceType) return;
     setSaving(true);
     setError(null);
     try {
+      // A category typed in that doesn't exist yet is created now, as part of
+      // saving — it is never written to the database before Save is clicked.
+      let categoryName = trimmedType;
+      const existing = categories.find((c) => c.name.toLowerCase() === trimmedType.toLowerCase());
+      if (existing) {
+        categoryName = existing.name;
+      } else {
+        const created = await api.createCategory({ name: trimmedType, createdBy: 'Test User' });
+        setCategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+        categoryName = created.name;
+      }
+      let sourceName = trimmedSource;
+      const existingSource = sourceSystems.find((x) => x.name.toLowerCase() === trimmedSource.toLowerCase());
+      if (existingSource) {
+        sourceName = existingSource.name;
+      } else {
+        const createdSource = await api.createSourceSystem({ name: trimmedSource, createdBy: 'Test User' });
+        setSourceSystems((prev) => [...prev, createdSource].sort((a, b) => a.name.localeCompare(b.name)));
+        sourceName = createdSource.name;
+      }
       await onSave({
         name: trimmedName,
-        type,
-        source,
+        type: categoryName,
+        source: sourceName,
         status,
         sourceType,
         fileName,
@@ -247,12 +203,6 @@ export default function NewCollectionPage({
     setSource('');
     setStatus('');
     setSourceType('');
-    setAddingCategory(false);
-    setNewCategoryName('');
-    setCategoryError(null);
-    setAddingSourceSystem(false);
-    setNewSourceSystemName('');
-    setSourceSystemError(null);
     setFields(null);
     setSelected([]);
     setFileName(null);
@@ -332,105 +282,39 @@ export default function NewCollectionPage({
           <div className="field-group">
             <label className="field-label">Category</label>
             <div className="req-wrap">
-              {!type && <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />}
-              {!addingCategory ? (
-                <select
-                  value={type}
-                  disabled={loadingCategories}
-                  onChange={(e) => handleCategorySelect(e.target.value)}
-                >
-                  <option value="" disabled hidden>
-                    {loadingCategories ? 'Loading categories\u2026' : '\u2014 Select a category \u2014'}
-                  </option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                  <option value={ADD_NEW_CATEGORY}>+ Add New Category</option>
-                </select>
-              ) : (
-                <div className="add-category-form">
-                  <input
-                    type="text"
-                    placeholder="New category name"
-                    value={newCategoryName}
-                    autoFocus
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(); }
-                      if (e.key === 'Escape') { setAddingCategory(false); setCategoryError(null); }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    disabled={!newCategoryName.trim() || categorySaving}
-                    onClick={handleAddCategory}
-                  >
-                    {categorySaving ? 'Adding\u2026' : 'Add'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => { setAddingCategory(false); setCategoryError(null); }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
+              {!trimmedType && <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />}
+              <input
+                type="text"
+                list="category-options"
+                placeholder={loadingCategories ? 'Loading categories\u2026' : 'Select or type a category'}
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+              />
+              <datalist id="category-options">
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name} />
+                ))}
+              </datalist>
             </div>
-            {categoryError && <p className="error-text">{categoryError}</p>}
           </div>
 
           <div className="field-group">
             <label className="field-label">Source System</label>
             <div className="req-wrap">
-              {!source && <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />}
-              {!addingSourceSystem ? (
-                <select
-                  value={source}
-                  disabled={loadingSourceSystems}
-                  onChange={(e) => handleSourceSystemSelect(e.target.value)}
-                >
-                  <option value="" disabled hidden>
-                    {loadingSourceSystems ? 'Loading source systems\u2026' : '\u2014 Select Source System \u2014'}
-                  </option>
-                  {sourceSystems.map((s) => (
-                    <option key={s.id} value={s.name}>{s.name}</option>
-                  ))}
-                  <option value={ADD_NEW_SOURCE_SYSTEM}>+ Add New Source System</option>
-                </select>
-              ) : (
-                <div className="add-category-form">
-                  <input
-                    type="text"
-                    placeholder="New source system name"
-                    value={newSourceSystemName}
-                    autoFocus
-                    onChange={(e) => setNewSourceSystemName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') { e.preventDefault(); handleAddSourceSystem(); }
-                      if (e.key === 'Escape') { setAddingSourceSystem(false); setSourceSystemError(null); }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    disabled={!newSourceSystemName.trim() || sourceSystemSaving}
-                    onClick={handleAddSourceSystem}
-                  >
-                    {sourceSystemSaving ? 'Adding\u2026' : 'Add'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => { setAddingSourceSystem(false); setSourceSystemError(null); }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
+              {!trimmedSource && <span className="req-flag" data-tip="Required" title="Required" aria-label="Required" />}
+              <input
+                type="text"
+                list="source-system-options"
+                placeholder={loadingSourceSystems ? 'Loading source systems\u2026' : 'Select or type a source system'}
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+              />
+              <datalist id="source-system-options">
+                {sourceSystems.map((x) => (
+                  <option key={x.id} value={x.name} />
+                ))}
+              </datalist>
             </div>
-            {sourceSystemError && <p className="error-text">{sourceSystemError}</p>}
           </div>
 
           <div className="field-group" style={{ marginBottom: 0 }}>
@@ -461,9 +345,20 @@ export default function NewCollectionPage({
 
       {detailsComplete && (
         <div className="details-box cd-box">
-          <div className="cdb-header">
-            <span className="cdb-accent" />
-            <h2 className="cdb-title">Upload Collection</h2>
+          <div className="cdb-header cdb-header-split">
+            <div className="cdb-header-left">
+              <span className="cdb-accent" />
+              <h2 className="cdb-title">Upload Collection</h2>
+            </div>
+            <a
+              href="#"
+              className="cd-help-link"
+              title="Help"
+              aria-label="Help"
+              onClick={(e) => { e.preventDefault(); setHelpOpen(true); }}
+            >
+              ?
+            </a>
           </div>
           <div className="cdb-divider" />
 
@@ -490,7 +385,6 @@ export default function NewCollectionPage({
           ) : (
             <div className="file-chip">
               <span className="fc-name">{fileName}</span>
-              <span className="fc-count">{fields.length} fields found in Row 1</span>
               <span
                 className="fc-clear"
                 title="Remove file"
@@ -521,10 +415,21 @@ export default function NewCollectionPage({
               <span className="cdb-accent" />
               <h2 className="cdb-title">Collection Fields</h2>
             </div>
-            <span className="fdim" style={{ fontSize: 12 }}>{selectedCount} of {fields.length} selected</span>
+            <span className="grid-box-right">
+              <span className="fdim" style={{ fontSize: 12 }}>{selectedCount} of {fields.length} selected</span>
+              <a
+              href="#"
+              className="cd-help-link"
+              title="Help"
+              aria-label="Help"
+              onClick={(e) => { e.preventDefault(); setHelpOpen(true); }}
+            >
+              ?
+            </a>
+            </span>
           </div>
           <div className="cdb-divider" />
-          <div style={{ maxHeight: 420, overflowY: 'auto', overflowX: 'auto' }} className="field-table">
+          <div className="field-table fields-scroll">
             <table>
               <thead>
                 <tr>
@@ -560,7 +465,7 @@ export default function NewCollectionPage({
                         value={f.dataType || 'Text'}
                         onChange={(e) => updateFieldMeta(i, { dataType: e.target.value as FieldDataType })}
                       >
-                        <option value="Text">Text</option>
+                        <option value="Text">Free Text</option>
                         <option value="Number">Number</option>
                         <option value="Date">Date</option>
                       </select>

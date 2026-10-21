@@ -950,3 +950,40 @@
 
   /* New Collection boxes: same rounded card as the grid boxes */
   .details-box.cd-box{ border-radius:8px; box-shadow:0 1px 3px rgba(22,35,59,.06); }
+
+  .icon-btn-wrap{ display:inline-flex; }
+  .icon-btn:disabled{ opacity:.3; cursor:not-allowed; pointer-events:none; }
+
+  /* Collection Fields grid: height follows the data (a few fields = a short
+     grid) and grows to fill the viewport, scrolling internally only past that. */
+  .fields-scroll{
+    max-height:max(260px, calc(100vh - 300px));
+    overflow:auto;
+  }
+  .fields-scroll th{ position:sticky; top:0; z-index:2; background:var(--ink-2); box-shadow:inset 0 -1px 0 var(--line-soft); }
+
+  .map-selectors.map-selectors-flat{ background:transparent; border:none; border-radius:0; padding:0; margin:0; }
+  .map-selectors-flat select{ max-width:none; }
+
+  /* Field Mapping metric bar */
+  .metric-bar{
+    display:flex; background:#edf2f9; border-radius:6px; margin-bottom:18px; overflow:hidden;
+  }
+  .metric{ flex:1; padding:12px 20px; border-left:1px solid rgba(15,35,71,.12); min-width:0; }
+  .metric:first-child{ border-left:none; }
+  .metric-label{ font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#1E40AF; margin-bottom:2px; }
+  .metric-value{ font-size:26px; font-weight:700; color:#0f2a6b; line-height:1.2; white-space:nowrap; }
+  .metric-pct{ font-size:16px; font-weight:500; color:#617791; }
+  @media (max-width:760px){ .metric-bar{ flex-wrap:wrap; } .metric{ flex:1 1 33%; } }
+
+  /* New Mapping: pinned Mapping Details card and Field Mapping header + metrics */
+  .md-sticky{ position:sticky; z-index:15; margin-bottom:0; }
+  .fm-sticky{ position:sticky; z-index:12; background:var(--ink-2); padding-top:26px; margin-top:-26px; padding-bottom:14px; }
+
+  /* New Mapping: column headings pin under the Field Mapping metrics. The
+     table wrapper must not clip (overflow:hidden would stop sticky). */
+  .cd-box .mapping-table{ overflow:visible; border:none; margin-bottom:0; }
+  .cd-box .mapping-table th{
+    position:sticky; top:var(--th-top, 0px); z-index:11; background:var(--ink-2);
+    box-shadow:inset 0 -1px 0 var(--line-soft);
+  }

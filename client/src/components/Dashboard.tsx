@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Collection } from '../../../shared/types';
 import ConfirmDialog from './ConfirmDialog';
 import { CollectionStatusPill } from './MappingBadges';
+import { api } from '../lib/api';
 
 function formatDate(ts: number): string {
   // M/D/YYYY
@@ -33,6 +34,24 @@ export default function Dashboard({
   const [pendingDelete, setPendingDelete] = useState<Collection | null>(null);
   const [editNotice, setEditNotice] = useState(false);
   const [helpNotice, setHelpNotice] = useState(false);
+  // Ids of collections referenced by a saved mapping (as source or target).
+  // Those can't be deleted.
+  const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
+
+  async function loadUsage() {
+    try {
+      const mappings = await api.listSavedMappings();
+      const ids = new Set<string>();
+      mappings.forEach((m) => { ids.add(m.sourceId); ids.add(m.targetId); });
+      setUsedIds(ids);
+    } catch {
+      /* usage info is supplementary; the server still blocks deleting a used collection */
+    }
+  }
+
+  useEffect(() => {
+    loadUsage();
+  }, [collections]);
 
   // "Edit" is a work-in-progress feature for now — clicking it should never
   // navigate anywhere or open another screen, just surface a brief notice.
@@ -96,7 +115,7 @@ export default function Dashboard({
             )}
           </div>
           <button className="btn btn-primary" onClick={onNewCollection}>+ New Collection</button>
-          <button className="btn btn-primary btn-refresh" onClick={() => onRefresh()} disabled={loading} title="Refresh">
+          <button className="btn btn-primary btn-refresh" onClick={() => { onRefresh(); loadUsage(); }} disabled={loading} title="Refresh">
             <svg className={loading ? 'spin' : undefined} width="15" height="15" viewBox="0 0 16 16" fill="none">
               <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               <path d="M13.8 2.2v3.1h-3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -190,12 +209,16 @@ export default function Dashboard({
                               <path d="M11 2l3 3-8 8H3v-3l8-8z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           </button>
+                          <span
+                            title={usedIds.has(c.id) ? 'Collection used in Mapping, cannot be deleted' : 'Delete'}
+                            className="icon-btn-wrap"
+                          >
                           <button
                             className="icon-btn"
-                            title="Delete"
                             aria-label="Delete"
                             style={{ color: 'var(--rose)' }}
                             onClick={() => setPendingDelete(c)}
+                            disabled={usedIds.has(c.id)}
                           >
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                               <path d="M2.5 4.5h11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -204,6 +227,7 @@ export default function Dashboard({
                               <path d="M6.4 7v4M8 7v4M9.6 7v4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
                             </svg>
                           </button>
+                          </span>
                         </span>
                       </td>
                       <td>
